@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RE Price Sheet</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --panel: #0b1016;
+    --panel2: #0e1820;
+    --border: #1a3a5c;
+    --border-bright: #1e6fa0;
+    --accent: #00cfff;
+    --accent2: #00ff9d;
+    --accent3: #ff6b35;
+    --text: #c8e0f0;
+    --text-dim: #5a8aaa;
+    --gold: #ffc642;
+    --red: #ff4455;
+    --admin: #b06aff;
+    --row-hover: rgba(0,207,255,0.05);
+    --glow: 0 0 8px rgba(0,207,255,0.4);
+    --glow-green: 0 0 8px rgba(0,255,157,0.4);
+    --glow-admin: 0 0 8px rgba(176,106,255,0.4);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(90deg, #050b12, #0a1f30, #050b12);
+    border-bottom: 1px solid var(--border-bright);
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 20px rgba(0,207,255,0.15);
+  }
+  .logo-mark { font-family:'Orbitron',sans-serif; font-size:20px; font-weight:800; color:var(--accent); text-shadow:var(--glow); letter-spacing:3px; }
+  .logo-sub  { font-size:9px; color:var(--text-dim); letter-spacing:4px; text-transform:uppercase; }
+  .header-divider { flex:1; }
+  .header-btns { display:flex; gap:8px; align-items:center; }
+  .status-indicator { display:flex; align-items:center; gap:6px; font-size:10px; color:var(--accent2); letter-spacing:2px; }
+  .status-dot { width:6px;height:6px;border-radius:50%;background:var(--accent2);box-shadow:var(--glow-green);animation:pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+  /* ── ADMIN BTN in header ── */
+  .admin-btn {
+    font-family:'Orbitron',sans-serif;
+    font-size:9px;
+    font-weight:600;
+    letter-spacing:2px;
+    padding:6px 14px;
+    border-radius:2px;
+    border:1px solid var(--admin);
+    background:rgba(176,106,255,0.08);
+    color:var(--admin);
+    cursor:pointer;
+    transition:all 0.15s;
+    text-shadow:var(--glow-admin);
+  }
+  .admin-btn:hover { background:rgba(176,106,255,0.18); box-shadow:var(--glow-admin); }
+
+  /* ── MAIN LAYOUT ── */
+  .main-grid {
+    display:grid;
+    grid-template-columns: 400px 1fr;
+    gap:0;
+    height:calc(100vh - 52px);
+  }
+
+  /* ── PRICE PANEL (left) ── */
+  .price-panel { background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
+  .panel-header {
+    background:linear-gradient(90deg,rgba(0,207,255,0.08),transparent);
+    border-bottom:1px solid var(--border);
+    padding:9px 14px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel-title { font-family:'Orbitron',sans-serif;font-size:10px;font-weight:600;letter-spacing:3px;color:var(--accent);text-transform:uppercase; }
+  .lock-badge { margin-left:auto;font-size:9px;color:var(--text-dim);letter-spacing:2px;border:1px solid var(--border);padding:2px 6px;border-radius:2px; }
+  .price-scroll { flex:1;overflow-y:auto;padding:12px 12px; }
+  .price-scroll::-webkit-scrollbar { width:4px; }
+  .price-scroll::-webkit-scrollbar-track { background:var(--bg); }
+  .price-scroll::-webkit-scrollbar-thumb { background:var(--border-bright); }
+
+  .toggle-btn { padding:3px 10px;font-family:'Share Tech Mono',monospace;font-size:10px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;border-radius:2px;transition:all 0.15s;letter-spacing:1px; }
+  .toggle-btn.active-yes { background:rgba(0,255,157,0.12);border-color:var(--accent2);color:var(--accent2);text-shadow:var(--glow-green); }
+  .toggle-btn.active-no  { background:rgba(255,68,85,0.1);border-color:var(--red);color:var(--red); }
+
+  /* items table */
+  .section-label { font-size:9px;letter-spacing:3px;color:var(--text-dim);text-transform:uppercase;margin-bottom:5px;padding-left:2px; }
+  .items-table { width:100%;border-collapse:collapse;margin-bottom:8px; }
+  .items-table thead tr { border-bottom:1px solid var(--border-bright); }
+  .items-table thead th { font-size:9px;letter-spacing:2px;color:var(--accent);text-align:left;padding:4px 6px;font-weight:400; }
+  .items-table thead th:last-child { text-align:right; }
+  .items-table thead th:nth-child(3) { text-align:center; }
+  .items-table thead th:nth-child(2) { text-align:right; }
+  .items-table tbody tr { border-bottom:1px solid rgba(26,58,92,0.5);transition:background 0.1s; }
+  .items-table tbody tr:hover { background:var(--row-hover); }
+  .items-table td { padding:4px 6px;font-size:12px;color:var(--text); }
+  .items-table td.item-name { color:#a0c8e0; }
+  .items-table td.item-cost { color:var(--text-dim);font-size:11px;text-align:right; }
+  .items-table td.item-qty  { text-align:center;color:var(--accent2);font-size:13px;font-weight:bold;min-width:28px; }
+  .items-table td.item-total { text-align:right;color:var(--gold);font-size:12px; }
+  .qty-zero { color:var(--text-dim) !important; }
+  .items-table tr.loot-active td.item-name { color:var(--accent2); }
+  .items-table tr.loot-active td.item-qty  { color:var(--accent2);text-shadow:var(--glow-green); }
+
+  /* totals */
+  .totals-block { background:rgba(0,207,255,0.04);border:1px solid var(--border);border-radius:3px;padding:9px 11px;margin-top:6px; }
+  .total-row { display:flex;justify-content:space-between;align-items:center;padding:3px 0; }
+  .total-row + .total-row { border-top:1px solid rgba(26,58,92,0.5); }
+  .total-label { font-size:10px;color:var(--text-dim);letter-spacing:1px; }
+  .total-value { font-size:13px;color:var(--text); }
+  .total-value.highlight { color:var(--accent);font-size:14px;text-shadow:var(--glow); }
+  .total-value.discount-val { color:var(--accent3); }
+  .total-value.grand { color:var(--accent2);font-size:15px;text-shadow:var(--glow-green); }
+  .avg-cost-row { margin-top:5px;padding-top:5px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim); }
+
+  /* ── CONFIG PANEL (right) ── */
+  .config-panel { background:var(--panel2);display:flex;flex-direction:column;overflow:hidden; }
+  .config-scroll { flex:1;overflow-y:auto;padding:12px; }
+  .config-scroll::-webkit-scrollbar { width:4px; }
+  .config-scroll::-webkit-scrollbar-track { background:var(--bg); }
+  .config-scroll::-webkit-scrollbar-thumb { background:var(--border-bright); }
+
+  /* SEA grid */
+  .sea-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:9px; }
+  .sea-card { background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden;transition:border-color 0.2s; }
+  .sea-card.configured { border-color:rgba(0,207,255,0.4); }
+  .sea-card.exotic-card { border-color:rgba(255,107,53,0.3); }
+  .sea-card.exotic-card.configured { border-color:rgba(255,107,53,0.7); }
+  .sea-card-header {
+    background:linear-gradient(90deg,rgba(0,207,255,0.07),transparent);
+    padding:6px 10px;display:flex;align-items:center;gap:7px;border-bottom:1px solid var(--border);
+  }
+  .sea-card.exotic-card .sea-card-header { background:linear-gradient(90deg,rgba(255,107,53,0.07),transparent); }
+  .sea-num { font-family:'Orbitron',sans-serif;font-size:10px;color:var(--accent);font-weight:600;min-width:44px; }
+  .sea-card.exotic-card .sea-num { color:var(--accent3); }
+
+  /* Type pill buttons (standard SEAs) */
+  .type-pills { display:flex; gap:3px; }
+  .type-pill {
+    font-family:'Share Tech Mono',monospace;
+    font-size:9px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    padding:2px 7px;
+    border-radius:2px;
+    border:1px solid var(--border);
+    background:transparent;
+    color:var(--text-dim);
+    cursor:pointer;
+    transition:border-color 0.12s, color 0.12s, background 0.12s;
+  }
+  .type-pill:hover { opacity:0.85; }
+  .type-pill.active-armor    { border-color:rgba(0,207,255,0.55); color:var(--accent);  background:rgba(0,207,255,0.08); }
+  .type-pill.active-weapon   { border-color:rgba(255,107,53,0.6); color:var(--accent3); background:rgba(255,107,53,0.08); }
+  .type-pill.active-clothing { border-color:rgba(0,255,157,0.55); color:var(--accent2); background:rgba(0,255,157,0.08); }
+
+  /* fixed type badge for exotic */
+  .sea-type-badge { font-size:9px;letter-spacing:2px;color:var(--text-dim);border:1px solid var(--border);padding:2px 6px;border-radius:2px;text-transform:uppercase; }
+
+  .loot-badges { display:flex;gap:4px;margin-left:4px; }
+  .loot-badge { font-size:8px;letter-spacing:1px;font-weight:bold;padding:2px 5px;border-radius:2px;border:1px solid;animation:loot-pop 0.2s ease; }
+  @keyframes loot-pop { from{transform:scale(0.7);opacity:0}to{transform:scale(1);opacity:1} }
+  .loot-badge.gbw { color:#a8ff78;border-color:rgba(168,255,120,0.5);background:rgba(168,255,120,0.08);text-shadow:0 0 6px rgba(168,255,120,0.6); }
+  .loot-badge.mc  { color:#ffcf44;border-color:rgba(255,207,68,0.5);background:rgba(255,207,68,0.08);text-shadow:0 0 6px rgba(255,207,68,0.5); }
+  .sea-bits-display { margin-left:auto;font-size:10px;color:var(--text-dim); }
+  .sea-bits-display span { color:var(--gold);font-size:12px; }
+
+  .sea-card-body { padding:9px 10px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px; }
+  .field-group { display:flex;flex-direction:column;gap:3px; }
+  .field-label { font-size:8px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase; }
+  .field-select {
+    background:var(--bg);border:1px solid var(--border);color:var(--text);
+    font-family:'Share Tech Mono',monospace;font-size:11px;padding:5px 6px;border-radius:2px;
+    cursor:pointer;transition:border-color 0.15s,box-shadow 0.15s;width:100%;
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a8aaa'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 6px center;padding-right:20px;
+  }
+  .field-select:focus { outline:none;border-color:var(--accent);box-shadow:var(--glow); }
+  .field-select.has-value { border-color:rgba(0,207,255,0.4);color:var(--accent); }
+  .field-select.needs-loot { border-color:rgba(255,207,68,0.5);color:#ffcf44; }
+
+  /* controls bar */
+  .controls-bar { background:var(--panel);border-top:1px solid var(--border);padding:9px 12px;display:flex;align-items:center;gap:9px; }
+  .btn { font-family:'Orbitron',sans-serif;font-size:9px;font-weight:600;letter-spacing:2px;padding:7px 14px;border-radius:2px;border:none;cursor:pointer;transition:all 0.15s;text-transform:uppercase; }
+  .btn-primary { background:linear-gradient(135deg,rgba(0,207,255,0.2),rgba(0,207,255,0.1));border:1px solid var(--accent);color:var(--accent);text-shadow:var(--glow); }
+  .btn-primary:hover { background:linear-gradient(135deg,rgba(0,207,255,0.3),rgba(0,207,255,0.15));box-shadow:var(--glow); }
+  .btn-danger { background:rgba(255,68,85,0.08);border:1px solid rgba(255,68,85,0.4);color:var(--red); }
+  .btn-danger:hover { background:rgba(255,68,85,0.15); }
+  .copy-output { flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size:11px;padding:6px 10px;border-radius:2px;resize:none;height:34px; }
+
+  /* exotic separator */
+  .exotic-separator { grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:4px 0; }
+  .exotic-sep-line { flex:1;height:1px;background:linear-gradient(90deg,var(--border),rgba(255,107,53,0.4),var(--border)); }
+  .exotic-sep-label { font-family:'Orbitron',sans-serif;font-size:9px;color:var(--accent3);letter-spacing:4px;text-shadow:0 0 8px rgba(255,107,53,0.4); }
+
+  /* ── BULK APPLY BAR ── */
+  .bulk-bar {
+    background: linear-gradient(90deg, rgba(0,207,255,0.05), rgba(0,207,255,0.02));
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .bulk-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 5px 9px;
+  }
+
+  .bulk-label {
+    font-size: 8px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .bulk-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 4px 24px 4px 7px;
+    border-radius: 2px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a8aaa'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    transition: border-color 0.15s;
+    min-width: 110px;
+  }
+
+  .bulk-select:focus { outline: none; border-color: var(--accent); }
+  .bulk-select.has-value { border-color: rgba(0,207,255,0.45); color: var(--accent); }
+
+  .bulk-apply {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 4px 10px;
+    border: 1px solid var(--accent);
+    background: rgba(0,207,255,0.08);
+    color: var(--accent);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .bulk-apply:hover { background: rgba(0,207,255,0.18); box-shadow: var(--glow); }
+
+  .bulk-apply.enhance-btn {
+    border-color: var(--accent2);
+    background: rgba(0,255,157,0.07);
+    color: var(--accent2);
+  }
+  .bulk-apply.enhance-btn:hover { background: rgba(0,255,157,0.16); box-shadow: var(--glow-green); }
+
+  .bulk-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .bulk-clear {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 3px 8px;
+    border: 1px solid rgba(255,68,85,0.35);
+    background: transparent;
+    color: var(--red);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .bulk-clear:hover { background: rgba(255,68,85,0.1); }
+
+  /* toast */
+  .toast { position:fixed;bottom:20px;right:20px;background:var(--panel);border:1px solid var(--accent2);color:var(--accent2);font-family:'Share Tech Mono',monospace;font-size:12px;padding:9px 14px;border-radius:3px;box-shadow:var(--glow-green),0 4px 20px rgba(0,0,0,0.5);transform:translateY(60px);opacity:0;transition:all 0.3s;z-index:300;letter-spacing:1px; }
+  .toast.show { transform:translateY(0);opacity:1; }
+
+  /* ══════════════════════════════════════════════════
+     ADMIN PANEL OVERLAY
+  ══════════════════════════════════════════════════ */
+  .admin-overlay {
+    display:none;
+    position:fixed;inset:0;
+    background:rgba(4,8,14,0.85);
+    backdrop-filter:blur(4px);
+    z-index:200;
+    align-items:center;
+    justify-content:center;
+  }
+  .admin-overlay.open { display:flex; }
+
+  .admin-modal {
+    background:var(--panel);
+    border:1px solid var(--admin);
+    border-radius:6px;
+    width:min(820px,95vw);
+    max-height:88vh;
+    display:flex;
+    flex-direction:column;
+    box-shadow:0 0 40px rgba(176,106,255,0.2),0 20px 60px rgba(0,0,0,0.6);
+  }
+
+  .admin-modal-header {
+    background:linear-gradient(90deg,rgba(176,106,255,0.1),transparent);
+    border-bottom:1px solid rgba(176,106,255,0.3);
+    padding:12px 18px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .admin-modal-title { font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;letter-spacing:3px;color:var(--admin);text-shadow:var(--glow-admin); }
+  .admin-close { margin-left:auto;background:none;border:1px solid rgba(255,68,85,0.4);color:var(--red);font-family:'Share Tech Mono',monospace;font-size:11px;padding:4px 10px;border-radius:2px;cursor:pointer;letter-spacing:1px; }
+  .admin-close:hover { background:rgba(255,68,85,0.12); }
+
+  .admin-modal-body { flex:1;overflow-y:auto;padding:18px; }
+  .admin-modal-body::-webkit-scrollbar { width:4px; }
+  .admin-modal-body::-webkit-scrollbar-thumb { background:rgba(176,106,255,0.4); }
+
+  .admin-section { margin-bottom:22px; }
+  .admin-section-title { font-family:'Orbitron',sans-serif;font-size:9px;font-weight:600;letter-spacing:4px;color:var(--admin);text-transform:uppercase;margin-bottom:10px;padding-bottom:5px;border-bottom:1px solid rgba(176,106,255,0.2); }
+
+  .admin-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:9px; }
+  .admin-field { display:flex;flex-direction:column;gap:4px; }
+  .admin-label { font-size:9px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase; }
+  .admin-input {
+    background:var(--bg);border:1px solid var(--border);color:var(--text);
+    font-family:'Share Tech Mono',monospace;font-size:12px;
+    padding:6px 9px;border-radius:2px;width:100%;
+    transition:border-color 0.15s;
+  }
+  .admin-input:focus { outline:none;border-color:var(--admin);box-shadow:0 0 6px rgba(176,106,255,0.3); }
+  .admin-input.changed { border-color:rgba(176,106,255,0.6);color:var(--admin); }
+
+  .admin-footer { border-top:1px solid rgba(176,106,255,0.2);padding:12px 18px;display:flex;gap:9px;justify-content:flex-end; }
+  .btn-admin-save { background:linear-gradient(135deg,rgba(176,106,255,0.2),rgba(176,106,255,0.1));border:1px solid var(--admin);color:var(--admin);text-shadow:var(--glow-admin); }
+  .btn-admin-save:hover { background:linear-gradient(135deg,rgba(176,106,255,0.3),rgba(176,106,255,0.15));box-shadow:var(--glow-admin); }
+  .btn-admin-reset { background:rgba(255,198,66,0.06);border:1px solid rgba(255,198,66,0.4);color:var(--gold); }
+  .btn-admin-reset:hover { background:rgba(255,198,66,0.12); }
+
+  .admin-note { font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-top:6px;font-style:italic; }
+
+  @media (max-width:900px) {
+    .main-grid { grid-template-columns:1fr;height:auto; }
+    .price-panel { border-right:none;border-bottom:1px solid var(--border);max-height:50vh; }
+    .sea-grid { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo-mark">RE CALC</div>
+    <div class="logo-sub">Reverse Engineering Price System</div>
+  </div>
+  <div class="header-divider"></div>
+  <div class="header-btns">
+    <button class="admin-btn" onclick="openAdmin()">⚙ ADMIN</button>
+    <div class="status-indicator">
+      <div class="status-dot"></div>
+      SYSTEM ONLINE
+    </div>
+  </div>
+</header>
+
+<div class="main-grid">
+  <!-- LEFT: Price Sheet (read-only) -->
+  <div class="price-panel">
+    <div class="panel-header">
+      <div class="panel-title">Price Sheet</div>
+      <div class="lock-badge">🔒 READ ONLY</div>
+    </div>
+    <div class="price-scroll">
+
+      <div class="section-label">Power Bits / Rare Loot</div>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>ITEM</th>
+            <th style="text-align:right">COST</th>
+            <th style="text-align:center">QTY</th>
+            <th style="text-align:right">LINE TOTAL</th>
+          </tr>
+        </thead>
+        <tbody id="items-tbody"></tbody>
+      </table>
+      <div class="totals-block">
+        <div class="total-row">
+          <span class="total-label">SUBTOTAL</span>
+          <span class="total-value highlight" id="val-subtotal">0</span>
+        </div>
+        <div class="total-row" id="row-discount" style="display:none">
+          <span class="total-label" id="lbl-discount-amount">DISCOUNT AMOUNT</span>
+          <span class="total-value discount-val" id="val-discount">0</span>
+        </div>
+        <div class="total-row" id="row-grand" style="display:none">
+          <span class="total-label">GRAND TOTAL</span>
+          <span class="total-value grand" id="val-grand">0</span>
+        </div>
+      </div>
+      <div class="avg-cost-row">
+        <span>AVG COST / SEA</span>
+        <span id="val-avg">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: SEA Configuration -->
+  <div class="config-panel">
+    <div class="panel-header">
+      <div class="panel-title">SEA Configuration</div>
+    </div>
+
+    <!-- BULK APPLY BAR -->
+    <div class="bulk-bar">
+      <!-- All Power -->
+      <div class="bulk-group">
+        <span class="bulk-label">All Power</span>
+        <select class="bulk-select" id="bulk-power">
+          <option value="">— select —</option>
+        </select>
+        <button class="bulk-apply" onclick="applyBulkPower()">▶ APPLY ALL</button>
+        <button class="bulk-clear" onclick="clearBulkPower()" title="Clear power on all SEAs + Exotics">✕</button>
+      </div>
+
+      <div class="bulk-divider"></div>
+
+      <!-- All Enhance (SEAs only) -->
+      <div class="bulk-group">
+        <span class="bulk-label">SEA Enhance</span>
+        <select class="bulk-select" id="bulk-enhance-slot">
+          <option value="enhance1">Slot 1</option>
+          <option value="enhance2">Slot 2</option>
+          <option value="enhance3">Slot 3</option>
+        </select>
+        <select class="bulk-select" id="bulk-enhance-mod" style="min-width:200px">
+          <option value="">— modifier —</option>
+        </select>
+        <button class="bulk-apply enhance-btn" onclick="applyBulkEnhance()">▶ APPLY ALL</button>
+        <button class="bulk-clear" onclick="clearBulkEnhance()" title="Clear this enhance slot on all SEAs">✕</button>
+      </div>
+    </div>
+
+    <div class="config-scroll">
+      <div class="sea-grid" id="sea-grid"></div>
+    </div>
+    <div class="controls-bar">
+      <button class="btn btn-primary" onclick="copyToClipboard()">⎘ COPY OUTPUT</button>
+      <button class="btn btn-danger" onclick="resetAll()">✕ RESET</button>
+      <textarea class="copy-output" id="copy-output" readonly placeholder="Configure SEAs to generate order summary..."></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN OVERLAY -->
+<div class="admin-overlay" id="admin-overlay">
+  <div class="admin-modal">
+    <div class="admin-modal-header">
+      <div class="admin-modal-title">⚙ ADMIN PANEL</div>
+      <button class="admin-close" onclick="closeAdmin()">✕ CLOSE</button>
+    </div>
+    <div class="admin-modal-body" id="admin-body">
+      <!-- populated by JS -->
+    </div>
+    <div class="admin-footer">
+      <button class="btn btn-admin-reset" onclick="resetDefaults()">↺ RESTORE DEFAULTS</button>
+      <button class="btn btn-admin-save" onclick="saveAdmin()">✓ APPLY CHANGES</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// DEFAULT CONFIG — all prices & labels editable via Admin panel
+// ═══════════════════════════════════════════════════════════════════
+const DEFAULTS = {
+  rareLoot: [
+    { label: 'a Gackle Bat Wing',          cost: 75000  },
+    { label: 'a Malfunctioning Capacitor',  cost: 100000 },
+  ],
+  powerBits: [
+    { plusVal: 27, cost: 62900 },
+    { plusVal: 28, cost: 63200 },
+    { plusVal: 29, cost: 65100 },
+    { plusVal: 30, cost: 65300 },
+    { plusVal: 31, cost: 67200 },
+    { plusVal: 32, cost: 67300 },
+    { plusVal: 33, cost: 69200 },
+    { plusVal: 34, cost: 71100 },
+    { plusVal: 35, cost: 72900 },
+  ],
+  laborCost: 31250,
+  bccDiscount: 0.25,      // e.g. 0.25 = 25%
+  discountLabel: 'BCC Discount',
+};
+
+// Live config (mutated by admin saves; initialised from defaults)
+let cfg = JSON.parse(JSON.stringify(DEFAULTS));
+
+// ═══════════════════════════════════════════════════════════════════
+// STATIC DATA
+// ═══════════════════════════════════════════════════════════════════
+const MODIFIERS = [
+  'Armor Assembly','Armor Experimentation','Artisan Assembly','Artisan Experimentation',
+  'Assassinate Critical Chance','Assassinate Damage','Assault Action Cost',
+  'Beast Experience Bonus','Bleeding Absorption','Bleeding Resistance','Block Chance',
+  'Camouflage','Carbine Accuracy','Carbine Action Cost','Carbine Critical Chance',
+  'Carbine Damage','Carbine Speed','Clothing Assembly','Clothing Experimentation',
+  'Critical Chance Increase','Critical Hit Reduction','Cybernetic Assembly',
+  'Cybernetic Experimentation','Dance Prop Assembly','Dancing Enhancement',
+  'Defense General','Defense Vs. Knockdown','Devastation','Disease Absorption',
+  'Disease Resistance','Dodge Chance','Double Bladed Lightsaber Accuracy',
+  'Double Bladed Lightsaber Action Cost','Double Bladed Lightsaber Damage',
+  'Double Bladed Lightsaber Speed*','Droid Assembly','Droid Experimentation',
+  'Droid Speed','Elemental Penetration: Acid','Elemental Penetration: Cold',
+  'Elemental Penetration: Electricity','Elemental Penetration: Heat',
+  'Endurance Boost','Evasion Chance','Evasion Value','Fast Draw Critical Chance',
+  'Fervent Mutation','Fire Absorption','Fire Resistance','Focused Enzyme Manipulation*',
+  'Focused Fire Critical Chance','Food Assembly','Food Experimentation',
+  'Force Accuracy','Force Heal Cost Reduction','Force Power Max',
+  'Force Powers Cost Reduction','Force Powers Critical Chance',
+  'Glancing Blow Increase','Glancing Blow Increase (Melee)','Heal Cost Reduction*',
+  'Healing Potency','Heavy Weapon Accuracy','Heavy Weapon Action Cost',
+  'Heavy Weapon Critical Chance','Heavy Weapon Damage','Heavy Weapon Speed',
+  'Incubation Time Reduction','Instrument Assembly','Intimidation',
+  'Lightsaber Assembly','Lightsaber Experimentation','Medical Assembly',
+  'Medical Combat Speed','Medical Experimentation','Medical Heal Speed',
+  'Melee General','Music Knowledge','Musical Enhancement',
+  'One-Handed Critical Chance','One-Handed Lightsaber Accuracy',
+  'One-Handed Lightsaber Action Cost','One-Handed Lightsaber Damage',
+  'One-Handed Lightsaber Speed*','One-Handed Melee Action Cost',
+  'One-Handed Melee Damage','One-Handed Weapon Accuracy','One-handed Weapon Speed',
+  'Opportune Chance','Parry Rating','Pistol Accuracy','Pistol Action Cost',
+  'Pistol Critical Chance','Pistol Damage','Pistol Speed','Poison Absorption',
+  'Poison Resistance','Polearm Accuracy','Polearm Action Cost',
+  'Polearm Critical Chance','Polearm Damage','Polearm Speed','PvP Critical Chance',
+  'Ranged General','Reverse Engineering Chance','Rifle Accuracy','Rifle Action Cost',
+  'Rifle Critical Chance','Rifle Damage','Rifle Speed','Shipwright Assembly',
+  'Shipwright Experimentation','Structure Assembly','Structure Experimentation',
+  'Surveying','Thrown Weapon Accuracy','Toughness Boost','Tracking Droids',
+  'Two-Handed Lightsaber Accuracy','Two-Handed Lightsaber Action Cost',
+  'Two-Handed Lightsaber Damage','Two-Handed Lightsaber Speed*',
+  'Two-Handed Melee Accuracy','Two-Handed Melee Action Cost',
+  'Two-Handed Melee Critical Chance','Two-Handed Melee Damage',
+  'Unarmed Accuracy','Unarmed Action Cost','Unarmed Critical Chance',
+  'Unarmed Damage','Unarmed Speed','Weapon Assembly'
+];
+
+const NEEDS_GACKLE = new Set([
+  'Bleeding Resistance','Carbine Action Cost','Defense General','Heal Cost Reduction*',
+  'Incubation Time Reduction','One-Handed Lightsaber Accuracy','One-handed Weapon Speed',
+  'Polearm Accuracy','Ranged General','Toughness Boost','Two-Handed Melee Action Cost','Weapon Assembly'
+]);
+const NEEDS_CAP = new Set([
+  'Assassinate Critical Chance','Assassinate Damage','Dancing Enhancement',
+  'Defense General','Endurance Boost','Force Powers Critical Chance','Heal Cost Reduction*',
+  'Melee General','Opportune Chance','Pistol Damage','Polearm Critical Chance',
+  'Ranged General','Thrown Weapon Accuracy','Toughness Boost','Two-Handed Lightsaber Action Cost'
+]);
+
+// Lowest power bit needed per modifier — sourced directly from Modifier Ratios sheet col L.
+// When a user selects a higher power than needed, the LOWER value is used for pricing.
+const MIN_BITS = {
+  'Armor Assembly': 33,
+  'Armor Experimentation': 32,
+  'Artisan Assembly': 33,
+  'Artisan Experimentation': 32,
+  'Beast Experience Bonus*': 35,
+  'Bleeding Absorption': 32,
+  'Bleeding Resistance': 32,
+  'Camouflage': 35,
+  'Carbine Accuracy': 34,
+  'Carbine Action Cost': 30,
+  'Carbine Critical Chance': 30,
+  'Carbine Damage': 28,
+  'Carbine Speed': 34,
+  'Clothing Assembly': 33,
+  'Clothing Experimentation': 32,
+  'Critical Chance Increase': 30,
+  'Critical Hit Reduction': 32,
+  'Cybernetic Assembly': 33,
+  'Cybernetic Experimentation': 32,
+  'Dance Prop Assembly': 33,
+  'Dancing Enhancement': 33,
+  'Defense General': 35,
+  'Defense Vs. Blind': 34,
+  'Defense Vs. Dizzy': 34,
+  'Defense Vs. Intimidate': 34,
+  'Defense Vs. Knockdown': 34,
+  'Defense Vs. Stun': 34,
+  'Detect Camouflage*': 33,
+  'Disease Absorption': 32,
+  'Disease Resistance': 32,
+  'Dodge Chance': 32,
+  'Double Bladed Lightsaber Accuracy': 34,
+  'Double Bladed Lightsaber Action Cost': 30,
+  'Double Bladed Lightsaber Damage': 28,
+  'Double Bladed Lightsaber Speed*': 32,
+  'Droid Assembly': 33,
+  'Droid Experimentation': 32,
+  'Droid Speed': 33,
+  'Elemental Penetration: Acid*': 30,
+  'Elemental Penetration: Cold*': 30,
+  'Elemental Penetration: Electricity*': 30,
+  'Elemental Penetration: Heat*': 30,
+  'Endurance Boost': 35,
+  'Fervent Mutation*': 30,
+  'Fire Absorption': 32,
+  'Fire Resistance': 32,
+  'Focused Enzyme Manipulation*': 30,
+  'Food Assembly': 33,
+  'Food Experimentation': 32,
+  'Foraging': 34,
+  'Force Accuracy': 34,
+  'Force Heal Cost Reduction': 32,
+  'Force Power Max': 35,
+  'Force Powers Cost Reduction': 30,
+  'Force Powers Critical Chance': 30,
+  'Heal Cost Reduction*': 30,
+  'Healing Potency': 32,
+  'Heavy Weapon Accuracy': 34,
+  'Heavy Weapon Action Cost': 30,
+  'Heavy Weapon Critical Chance': 30,
+  'Heavy Weapon Damage': 28,
+  'Heavy Weapon Speed': 34,
+  'Incubation Time Reduction': 33,
+  'Instrument Assembly': 33,
+  'Intimidation': 32,
+  'Lightsaber Assembly': 33,
+  'Lightsaber Experimentation': 35,
+  'Medical Assembly': 33,
+  'Medical Combat Speed': 34,
+  'Medical Experimentation': 32,
+  'Medical Heal Speed': 34,
+  'Melee Defense': 34,
+  'Melee General': 35,
+  'Music Knowledge': 33,
+  'Musical Enhancement': 33,
+  'One-Handed Critical Chance': 30,
+  'One-Handed Lightsaber Accuracy': 30,
+  'One-Handed Lightsaber Action Cost': 30,
+  'One-Handed Lightsaber Damage': 28,
+  'One-Handed Lightsaber Speed*': 30,
+  'One-Handed Melee Action Cost': 30,
+  'One-Handed Melee Damage': 28,
+  'One-Handed Weapon Accuracy': 34,
+  'One-Handed Weapon Speed': 34,
+  'Opportune Chance': 35,
+  'Parry Rating': 30,
+  'Pistol Accuracy': 34,
+  'Pistol Action Cost': 30,
+  'Pistol Critical Chance': 30,
+  'Pistol Damage': 28,
+  'Pistol Speed': 34,
+  'Poison Absorption': 32,
+  'Poison Resistance': 32,
+  'Polearm Accuracy': 34,
+  'Polearm Action Cost': 30,
+  'Polearm Critical Chance': 30,
+  'Polearm Damage': 28,
+  'Polearm Speed': 34,
+  'PvP Critical Chance': 30,
+  'Ranged Defense': 34,
+  'Ranged General': 35,
+  'Reverse Engineering Chance': 30,
+  'Rifle Accuracy': 34,
+  'Rifle Action Cost': 30,
+  'Rifle Critical Chance': 30,
+  'Rifle Damage': 28,
+  'Rifle Speed': 34,
+  'Shipwright Assembly': 33,
+  'Shipwright Experimentation': 32,
+  'Structure Assembly': 33,
+  'Structure Experimentation': 32,
+  'Surveying': 34,
+  'Terrain Negotiation': 34,
+  'Thrown Weapon Accuracy': 34,
+  'Thrown Weapon Speed': 34,
+  'Toughness Boost': 35,
+  'Tracking Droids': 32,
+  'Two-Handed Lightsaber Accuracy': 34,
+  'Two-Handed Lightsaber Action Cost': 30,
+  'Two-Handed Lightsaber Damage': 28,
+  'Two-Handed Lightsaber Speed*': 30,
+  'Two-Handed Melee Accuracy': 34,
+  'Two-Handed Melee Action Cost': 30,
+  'Two-Handed Melee Critical Chance': 30,
+  'Two-Handed Melee Damage': 28,
+  'Two-Handed Melee Speed': 34,
+  'Unarmed Accuracy': 34,
+  'Unarmed Action Cost': 30,
+  'Unarmed Critical Chance': 30,
+  'Unarmed Damage': 28,
+  'Unarmed Speed': 34,
+  'Weapon Assembly': 33,
+  'Weapon Experimentation': 32,
+};
+
+// Returns the actual power bit to use for pricing a given modifier + chosen power.
+// Uses the LOWER of the two: modifier's minimum from the sheet, or user's chosen power.
+function effectiveBit(modifier, chosenPower) {
+  const minNeeded = MIN_BITS[modifier];
+  if (minNeeded === undefined) return chosenPower;   // not in table — use chosen
+  return Math.min(chosenPower, minNeeded);            // use whichever is LOWER
+}
+
+const EXOTIC_SEAS = [
+  { num: 1, type: 'Clothing' },
+  { num: 2, type: 'Weapon'   },
+  { num: 3, type: 'Armor'    },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+// APP STATE
+// ═══════════════════════════════════════════════════════════════════
+let state = {
+  discount: 'none',
+  // 9 standard SEAs — each has a user-selectable type
+  standard: Array.from({length:9},(_,i)=>({ power:null, type:'Armor', enhance1:'', enhance2:'', enhance3:'' })),
+  exotic:   EXOTIC_SEAS.map(()=>({ power:null, enhance1:'', enhance2:'', enhance3:'' })),
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// CALCULATIONS
+// ═══════════════════════════════════════════════════════════════════
+function getBitsNeeded(sea) {
+  return (sea.enhance1?1:0)+(sea.enhance2?1:0)+(sea.enhance3?1:0);
+}
+
+function getTotalBitsPerLevel() {
+  // Each enhancement = 1 bit at the LOWER of: user's chosen power OR modifier's minimum from sheet
+  const counts = {};
+  cfg.powerBits.forEach(pb => counts[pb.plusVal] = 0);
+  [...state.standard, ...state.exotic].forEach(sea => {
+    if (!sea.power) return;
+    [sea.enhance1, sea.enhance2, sea.enhance3].forEach(mod => {
+      if (!mod) return;
+      const bit = effectiveBit(mod, sea.power);
+      counts[bit] = (counts[bit] || 0) + 1;
+    });
+  });
+  return counts;
+}
+
+function getRareLootNeeded() {
+  const allMods = new Set();
+  [...state.standard, ...state.exotic].forEach(sea => {
+    [sea.enhance1,sea.enhance2,sea.enhance3].forEach(m => { if(m) allMods.add(m); });
+  });
+  return {
+    needsGackle: [...allMods].some(m => NEEDS_GACKLE.has(m)),
+    needsCap:    [...allMods].some(m => NEEDS_CAP.has(m)),
+  };
+}
+
+function getLineItems() {
+  const counts = getTotalBitsPerLevel();
+  const configured = [...state.standard,...state.exotic].filter(s=>s.power!==null).length;
+  const { needsGackle, needsCap } = getRareLootNeeded();
+  const items = [];
+
+  cfg.rareLoot.forEach((rl,i) => {
+    const needed = (i===0 ? needsGackle : needsCap);
+    items.push({ label:rl.label, cost:rl.cost, qty:(needed && configured>0)?1:0 });
+  });
+  cfg.powerBits.forEach(pb => {
+    items.push({ label:`+${pb.plusVal} Power Bit`, cost:pb.cost, qty:counts[pb.plusVal]||0 });
+  });
+  items.push({ label:'Labor', cost:cfg.laborCost, qty:configured });
+  return items;
+}
+
+function fmt(n) {
+  if(!n || isNaN(n)) return '0';
+  return n.toLocaleString();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER — PRICE SHEET
+// ═══════════════════════════════════════════════════════════════════
+function renderPriceSheet() {
+  const items = getLineItems();
+  const RARE_LABELS = new Set(cfg.rareLoot.map(r=>r.label));
+  let subtotal = 0, rows = '';
+  items.forEach(item => {
+    const lineTotal = item.qty * item.cost;
+    subtotal += lineTotal;
+    const isRareActive = RARE_LABELS.has(item.label) && item.qty > 0;
+    rows += `<tr class="${isRareActive?'loot-active':''}">
+      <td class="item-name">${item.label}</td>
+      <td class="item-cost">${fmt(item.cost)}</td>
+      <td class="item-qty ${item.qty===0?'qty-zero':''}">${item.qty>0?item.qty:'—'}</td>
+      <td class="item-total ${lineTotal>0?'':'qty-zero'}">${lineTotal>0?fmt(lineTotal):'—'}</td>
+    </tr>`;
+  });
+  document.getElementById('items-tbody').innerHTML = rows;
+  document.getElementById('val-subtotal').textContent = fmt(subtotal);
+
+  const pct = Math.round(cfg.bccDiscount*100);
+  // Update read-only discount chip in price panel
+  const _chipLabel = document.getElementById('lbl-bcc-discount');
+  const _chipVal   = document.getElementById('discount-chip-val');
+  if (_chipLabel) _chipLabel.textContent = `${cfg.discountLabel} (${Math.round(cfg.bccDiscount*100)}%)`;
+  if (_chipVal) {
+    const _on = state.discount === 'bcc';
+    _chipVal.textContent = _on ? 'ON' : 'OFF';
+    _chipVal.className = 'discount-chip-val ' + (_on ? 'on' : 'off');
+  }
+
+    // Update discount row label with name + percentage
+  const _discLbl = document.getElementById('lbl-discount-amount');
+  if (_discLbl) {
+    const pct = Math.round(cfg.bccDiscount * 100);
+    _discLbl.textContent = `${cfg.discountLabel} (${pct}% OFF)`;
+  }
+
+  const discRow = document.getElementById('row-discount');
+  const grandRow = document.getElementById('row-grand');
+  if (state.discount==='bcc' && subtotal>0) {
+    const discAmt = Math.round(subtotal * cfg.bccDiscount);
+    discRow.style.display='flex'; grandRow.style.display='flex';
+    document.getElementById('val-discount').textContent = fmt(discAmt);
+    document.getElementById('val-grand').textContent    = fmt(subtotal-discAmt);
+  } else {
+    discRow.style.display='none'; grandRow.style.display='none';
+  }
+
+  const totalSeas = [...state.standard,...state.exotic].filter(s=>s.power!==null).length;
+  const avgEl = document.getElementById('val-avg');
+  if (totalSeas>0) {
+    const eff = state.discount==='bcc' ? subtotal*(1-cfg.bccDiscount) : subtotal;
+    avgEl.textContent = fmt(Math.round(eff/totalSeas)) + ' / SEA';
+    avgEl.style.color = 'var(--accent)';
+  } else {
+    avgEl.textContent='—'; avgEl.style.color='var(--text-dim)';
+  }
+
+  updateCopyOutput();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// RENDER — SEA GRID
+// ═══════════════════════════════════════════════════════════════════
+function lootTag(mod) {
+  const g=NEEDS_GACKLE.has(mod), c=NEEDS_CAP.has(mod);
+  if(g&&c) return ' [GBW+MC]';
+  if(g)    return ' [GBW]';
+  if(c)    return ' [MC]';
+  return '';
+}
+
+function seaLootBadges(sdata) {
+  const mods=[sdata.enhance1,sdata.enhance2,sdata.enhance3].filter(Boolean);
+  let h='';
+  if(mods.some(m=>NEEDS_GACKLE.has(m))) h+=`<span class="loot-badge gbw" title="Requires Gackle Bat Wing">GBW</span>`;
+  if(mods.some(m=>NEEDS_CAP.has(m)))    h+=`<span class="loot-badge mc"  title="Requires Malfunctioning Capacitor">MC</span>`;
+  return h;
+}
+
+function renderSEAGrid() {
+  const grid = document.getElementById('sea-grid');
+  let html = '';
+
+  // Standard SEAs (SEA 1–9 with user-selectable type)
+  state.standard.forEach((sdata, i) => {
+    html += renderSEACard(i+1, i, 'standard', sdata);
+  });
+
+  // Exotic separator
+  html += `<div class="exotic-separator" style="grid-column:1/-1">
+    <div class="exotic-sep-line"></div>
+    <div class="exotic-sep-label">EXOTIC</div>
+    <div class="exotic-sep-line"></div>
+  </div>`;
+
+  // Exotic SEAs (fixed types)
+  state.exotic.forEach((sdata, i) => {
+    html += renderSEACard(EXOTIC_SEAS[i].num, i, 'exotic', sdata, EXOTIC_SEAS[i].type);
+  });
+
+  grid.innerHTML = html;
+}
+
+function renderSEACard(num, idx, group, sdata, fixedType) {
+  const isExotic = group === 'exotic';
+  const isConfigured = sdata.power !== null;
+  const currentType = isExotic ? fixedType : sdata.type;
+  const bits = getBitsNeeded(sdata);
+  const badges = seaLootBadges(sdata);
+
+  const powerOptions = cfg.powerBits.map(pb =>
+    `<option value="${pb.plusVal}" ${sdata.power==pb.plusVal?'selected':''}>+${pb.plusVal}</option>`
+  ).join('');
+
+  function modSelect(field, val) {
+    const lc = val && (NEEDS_GACKLE.has(val)||NEEDS_CAP.has(val)) ? ' needs-loot' : '';
+    return `<select class="field-select ${val?'has-value':''}${lc}"
+      data-group="${group}" data-idx="${idx}" data-field="${field}" onchange="updateSEA(this)">
+      <option value="">— none —</option>
+      ${MODIFIERS.map(m=>`<option value="${m}" ${val===m?'selected':''}>${m}${lootTag(m)}</option>`).join('')}
+    </select>`;
+  }
+
+  // Type control: pill buttons for standard, badge for exotic
+  const typeControl = isExotic
+    ? `<span class="sea-type-badge">${fixedType.toUpperCase()}</span>`
+    : `<div class="type-pills">
+        <button class="type-pill ${currentType==='Armor'   ?'active-armor':''}"
+          onclick="setSeaType('${group}',${idx},'Armor')"   >ARMOR</button>
+        <button class="type-pill ${currentType==='Weapon'  ?'active-weapon':''}"
+          onclick="setSeaType('${group}',${idx},'Weapon')"  >WEAPON</button>
+        <button class="type-pill ${currentType==='Clothing'?'active-clothing':''}"
+          onclick="setSeaType('${group}',${idx},'Clothing')">CLOTHING</button>
+      </div>`;
+
+  return `<div class="sea-card ${isConfigured?'configured':''} ${isExotic?'exotic-card':''}" id="card-${group}-${idx}">
+    <div class="sea-card-header">
+      <span class="sea-num">${isExotic?'EXOTIC':'SEA'} ${num}</span>
+      ${typeControl}
+      <span class="loot-badges" id="loot-${group}-${idx}">${badges}</span>
+      <span class="sea-bits-display">BITS: <span id="bits-${group}-${idx}">${bits}</span></span>
+    </div>
+    <div class="sea-card-body">
+      <div class="field-group">
+        <div class="field-label">Power</div>
+        <select class="field-select ${sdata.power?'has-value':''}"
+          data-group="${group}" data-idx="${idx}" data-field="power" onchange="updateSEA(this)">
+          <option value="">— select —</option>
+          ${powerOptions}
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Enhance 1</div>
+        ${modSelect('enhance1',sdata.enhance1)}
+      </div>
+      <div class="field-group">
+        <div class="field-label">Enhance 2</div>
+        ${modSelect('enhance2',sdata.enhance2)}
+      </div>
+      <div class="field-group">
+        <div class="field-label">Enhance 3</div>
+        ${modSelect('enhance3',sdata.enhance3)}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════════════════════
+function updateSEA(el) {
+  const { group, idx, field } = el.dataset;
+  const val = el.value;
+  const i = parseInt(idx);
+
+  if (field === 'power') {
+    state[group][i].power = val ? parseInt(val) : null;
+  } else {
+    state[group][i][field] = val;
+    el.classList.toggle('has-value', !!val);
+    el.classList.toggle('needs-loot', !!val && (NEEDS_GACKLE.has(val)||NEEDS_CAP.has(val)));
+  }
+
+  const card = document.getElementById(`card-${group}-${i}`);
+  card.classList.toggle('configured', state[group][i].power !== null);
+
+  const bitsEl = document.getElementById(`bits-${group}-${i}`);
+  if (bitsEl) bitsEl.textContent = getBitsNeeded(state[group][i]);
+
+  if (field !== 'type') {
+    const badgeEl = document.getElementById(`loot-${group}-${i}`);
+    if (badgeEl) badgeEl.innerHTML = seaLootBadges(state[group][i]);
+  }
+
+  if (field === 'power') {
+    const sel = card.querySelector(`[data-field="power"]`);
+    if (sel) sel.classList.toggle('has-value', !!val);
+  }
+
+  renderPriceSheet();
+}
+
+// setDiscount is now admin-only via adminSetDiscount()
+
+function setSeaType(group, idx, type) {
+  state[group][idx].type = type;
+  // Update pill states without full re-render
+  const card = document.getElementById(`card-${group}-${idx}`);
+  card.querySelectorAll('.type-pill').forEach(btn => {
+    btn.className = 'type-pill';
+    const t = btn.textContent.trim();
+    if (t === type.toUpperCase()) {
+      btn.classList.add(`active-${type.toLowerCase()}`);
+    }
+  });
+}
+
+function resetAll() {
+  state.standard = Array.from({length:9},()=>({ power:null, type:'Armor', enhance1:'', enhance2:'', enhance3:'' }));
+  state.exotic   = EXOTIC_SEAS.map(()=>({ power:null, enhance1:'', enhance2:'', enhance3:'' }));
+  state.discount = 'none';
+  renderSEAGrid();
+  renderPriceSheet();
+  showToast('Configuration reset.');
+}
+
+function updateCopyOutput() {
+  const lines = ['═══ RE ORDER SUMMARY ═══'];
+  const allSeas = [
+    ...state.standard.map((s,i) => ({...s, label:`SEA ${i+1} (${s.type})`})),
+    ...state.exotic.map((s,i)   => ({...s, label:`EXOTIC ${EXOTIC_SEAS[i].num} (${EXOTIC_SEAS[i].type})`})),
+  ].filter(s=>s.power!==null);
+
+  if (allSeas.length===0) { document.getElementById('copy-output').value=''; return; }
+
+  allSeas.forEach(sea => {
+    const enhs = [sea.enhance1,sea.enhance2,sea.enhance3].filter(Boolean);
+    lines.push(`• ${sea.label}: +${sea.power} Power${enhs.length?' | '+enhs.join(', '):''}`);
+  });
+
+  const items = getLineItems().filter(i=>i.qty>0);
+  lines.push('─── Items ───');
+  items.forEach(i => lines.push(`  ${i.label} x${i.qty} = ${fmt(i.qty*i.cost)}`));
+
+  const sub = items.reduce((s,i)=>s+i.qty*i.cost,0);
+  lines.push(`Subtotal: ${fmt(sub)}`);
+  if (state.discount==='bcc') {
+    const d = Math.round(sub*cfg.bccDiscount);
+    lines.push(`${cfg.discountLabel}: -${fmt(d)}`);
+    lines.push(`Grand Total: ${fmt(sub-d)}`);
+  }
+  document.getElementById('copy-output').value = lines.join('\n');
+}
+
+function copyToClipboard() {
+  const ta = document.getElementById('copy-output');
+  if (!ta.value) { showToast('Nothing to copy yet.'); return; }
+  navigator.clipboard.writeText(ta.value).then(()=>showToast('Copied to clipboard!'));
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ADMIN PANEL
+// ═══════════════════════════════════════════════════════════════════
+const ADMIN_PASSWORD = 'blu1234';
+let adminUnlocked = false;
+
+function openAdmin() {
+  document.getElementById('admin-overlay').classList.add('open');
+  if (adminUnlocked) {
+    document.querySelector('.admin-footer').style.display = 'flex';
+    buildAdminUI();
+  } else {
+    showPasswordScreen();
+  }
+}
+
+function closeAdmin() {
+  document.getElementById('admin-overlay').classList.remove('open');
+}
+
+function showPasswordScreen() {
+  document.querySelector('.admin-footer').style.display = 'none';
+  document.getElementById('admin-body').innerHTML = `
+    <div class="pw-screen">
+      <div class="pw-icon">&#128272;</div>
+      <div class="pw-title">Admin Access Required</div>
+      <div class="pw-field-wrap">
+        <input class="pw-input" id="pw-input" type="password"
+          placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"
+          onkeydown="if(event.key==='Enter')checkPassword()"
+          autocomplete="off">
+        <button class="pw-submit" onclick="checkPassword()">ENTER</button>
+      </div>
+      <div class="pw-error-msg" id="pw-error-msg"></div>
+    </div>`;
+  setTimeout(() => { const i = document.getElementById('pw-input'); if(i) i.focus(); }, 50);
+}
+
+function checkPassword() {
+  const inp = document.getElementById('pw-input');
+  if (!inp) return;
+  if (inp.value === ADMIN_PASSWORD) {
+    adminUnlocked = true;
+    document.querySelector('.admin-footer').style.display = 'flex';
+    buildAdminUI();
+  } else {
+    inp.classList.remove('pw-error');
+    void inp.offsetWidth;
+    inp.classList.add('pw-error');
+    const msg = document.getElementById('pw-error-msg');
+    if (msg) msg.textContent = 'INCORRECT PASSWORD';
+    inp.value = '';
+    setTimeout(() => {
+      const inp2 = document.getElementById('pw-input');
+      if (inp2) inp2.classList.remove('pw-error');
+      const m = document.getElementById('pw-error-msg');
+      if (m) m.textContent = '';
+    }, 1800);
+  }
+}
+
+function adminSetDiscount(type) {
+  state.discount = type;
+  const yes = document.getElementById('adm-disc-yes');
+  const no  = document.getElementById('adm-disc-no');
+  if (yes) yes.className = 'toggle-btn' + (type==='bcc' ? ' active-yes' : '');
+  if (no)  no.className  = 'toggle-btn' + (type==='none'? ' active-no'  : '');
+  renderPriceSheet();
+}
+
+function buildAdminUI() {
+  const body = document.getElementById('admin-body');
+  let html = '';
+
+  //  // ── Discount toggle + settings ────────────────────
+  const discOn = state.discount === 'bcc';
+  html += `<div class="admin-section">
+    <div class="admin-section-title">Discount</div>
+    <div class="admin-grid">
+      <div class="admin-field">
+        <div class="admin-label">Apply Discount</div>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <button id="adm-disc-yes" class="toggle-btn \${discOn?'active-yes':''}"
+            onclick="adminSetDiscount('bcc')">ON</button>
+          <button id="adm-disc-no"  class="toggle-btn \${!discOn?'active-no':''}"
+            onclick="adminSetDiscount('none')">OFF</button>
+        </div>
+      </div>
+      <div class="admin-field">
+        <div class="admin-label">Discount Label</div>
+        <input class="admin-input" data-cfg="discountLabel" type="text" value="\${cfg.discountLabel}">
+      </div>
+      <div class="admin-field">
+        <div class="admin-label">Discount % (e.g. 25 for 25%)</div>
+        <input class="admin-input" data-cfg="bccDiscount" type="number" min="0" max="100" step="1" value="\${Math.round(cfg.bccDiscount*100)}">
+      </div>
+    </div>
+  </div>`;
+
+  // ── Rare loot ──────────────────────────────────────
+  html += `<div class="admin-section">
+    <div class="admin-section-title">Rare Loot Prices</div>
+    <div class="admin-grid">`;
+  cfg.rareLoot.forEach((rl,i) => {
+    html += `<div class="admin-field">
+      <div class="admin-label">${rl.label}</div>
+      <input class="admin-input" data-cfg="rareLoot" data-idx="${i}" data-prop="cost"
+        type="number" min="0" step="1000" value="${rl.cost}">
+    </div>`;
+  });
+  html += `</div></div>`;
+
+  // ── Power bits ─────────────────────────────────────
+  html += `<div class="admin-section">
+    <div class="admin-section-title">Power Bit Prices</div>
+    <div class="admin-grid">`;
+  cfg.powerBits.forEach((pb,i) => {
+    html += `<div class="admin-field">
+      <div class="admin-label">+${pb.plusVal} Power Bit</div>
+      <input class="admin-input" data-cfg="powerBits" data-idx="${i}" data-prop="cost"
+        type="number" min="0" step="100" value="${pb.cost}">
+    </div>`;
+  });
+  html += `</div></div>`;
+
+  // ── Labor ──────────────────────────────────────────
+  html += `<div class="admin-section">
+    <div class="admin-section-title">Labor Cost</div>
+    <div class="admin-grid">
+      <div class="admin-field">
+        <div class="admin-label">Labor (per SEA)</div>
+        <input class="admin-input" data-cfg="laborCost" type="number" min="0" step="250" value="${cfg.laborCost}">
+      </div>
+    </div>
+    <div class="admin-note">* All prices in credits. Changes apply immediately after clicking Apply Changes.</div>
+  </div>`;
+
+
+  body.innerHTML = html;
+
+  // highlight changed inputs
+  body.querySelectorAll('.admin-input').forEach(inp => {
+    inp.addEventListener('input', () => inp.classList.add('changed'));
+  });
+}
+
+function saveAdmin() {
+  const body = document.getElementById('admin-body');
+
+  // scalar fields
+  const dlabel = body.querySelector('[data-cfg="discountLabel"]');
+  if (dlabel) cfg.discountLabel = dlabel.value.trim() || cfg.discountLabel;
+
+  const dpct = body.querySelector('[data-cfg="bccDiscount"]');
+  if (dpct) {
+    const v = parseFloat(dpct.value);
+    if (!isNaN(v) && v>=0 && v<=100) cfg.bccDiscount = v/100;
+  }
+
+  const labor = body.querySelector('[data-cfg="laborCost"]');
+  if (labor) {
+    const v = parseInt(labor.value);
+    if (!isNaN(v) && v>=0) cfg.laborCost = v;
+  }
+
+  // array fields
+  body.querySelectorAll('[data-cfg="rareLoot"]').forEach(inp => {
+    const i = parseInt(inp.dataset.idx);
+    const v = parseInt(inp.value);
+    if (!isNaN(v) && v>=0) cfg.rareLoot[i].cost = v;
+  });
+
+  body.querySelectorAll('[data-cfg="powerBits"]').forEach(inp => {
+    const i = parseInt(inp.dataset.idx);
+    const v = parseInt(inp.value);
+    if (!isNaN(v) && v>=0) cfg.powerBits[i].cost = v;
+  });
+
+  closeAdmin();
+  renderSEAGrid();
+  renderPriceSheet();
+  populateBulkSelects();
+  showToast('Changes applied!');
+}
+
+function resetDefaults() {
+  cfg = JSON.parse(JSON.stringify(DEFAULTS));
+  buildAdminUI();
+  renderSEAGrid();
+  renderPriceSheet();
+  showToast('Defaults restored.');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BULK APPLY
+// ═══════════════════════════════════════════════════════════════════
+
+function populateBulkSelects() {
+  // Power bulk select — built from current cfg
+  const bp = document.getElementById('bulk-power');
+  const prevPower = bp.value;
+  bp.innerHTML = '<option value="">— select —</option>' +
+    cfg.powerBits.map(pb => `<option value="${pb.plusVal}" ${prevPower==pb.plusVal?'selected':''}>+${pb.plusVal}</option>`).join('');
+  bp.classList.toggle('has-value', !!bp.value);
+
+  // Enhance modifier bulk select — full modifier list with loot tags
+  const bm = document.getElementById('bulk-enhance-mod');
+  const prevMod = bm.value;
+  bm.innerHTML = '<option value="">— modifier —</option>' +
+    MODIFIERS.map(m => `<option value="${m}" ${prevMod===m?'selected':''}>${m}${lootTag(m)}</option>`).join('');
+  bm.classList.toggle('has-value', !!bm.value);
+}
+
+function applyBulkPower() {
+  const val = document.getElementById('bulk-power').value;
+  if (!val) { showToast('Select a power level first.'); return; }
+  const pv = parseInt(val);
+  // Apply to all 9 standard SEAs
+  state.standard.forEach((s,i) => {
+    s.power = pv;
+  });
+  // Apply to all 3 exotic SEAs
+  state.exotic.forEach((s,i) => {
+    s.power = pv;
+  });
+  document.getElementById('bulk-power').classList.add('has-value');
+  renderSEAGrid();
+  renderPriceSheet();
+  showToast(`+${val} Power applied to all SEAs & Exotics.`);
+}
+
+function clearBulkPower() {
+  state.standard.forEach(s => { s.power = null; });
+  state.exotic.forEach(s   => { s.power = null; });
+  document.getElementById('bulk-power').value = '';
+  document.getElementById('bulk-power').classList.remove('has-value');
+  renderSEAGrid();
+  renderPriceSheet();
+  showToast('Power cleared on all SEAs & Exotics.');
+}
+
+function applyBulkEnhance() {
+  const slot = document.getElementById('bulk-enhance-slot').value;  // e.g. 'enhance1'
+  const mod  = document.getElementById('bulk-enhance-mod').value;
+  if (!mod) { showToast('Select a modifier first.'); return; }
+  // Apply only to standard SEAs (not exotics)
+  state.standard.forEach((s,i) => {
+    s[slot] = mod;
+  });
+  document.getElementById('bulk-enhance-mod').classList.add('has-value');
+  renderSEAGrid();
+  renderPriceSheet();
+  const slotNum = slot.replace('enhance','');
+  showToast(`"${mod}" applied to Enhance ${slotNum} on all SEAs.`);
+}
+
+function clearBulkEnhance() {
+  const slot = document.getElementById('bulk-enhance-slot').value;
+  state.standard.forEach(s => { s[slot] = ''; });
+  document.getElementById('bulk-enhance-mod').value = '';
+  document.getElementById('bulk-enhance-mod').classList.remove('has-value');
+  renderSEAGrid();
+  renderPriceSheet();
+  const slotNum = slot.replace('enhance','');
+  showToast(`Enhance ${slotNum} cleared on all SEAs.`);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════
+document.getElementById('admin-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('admin-overlay')) closeAdmin();
+});
+
+renderSEAGrid();
+renderPriceSheet();
+populateBulkSelects();
+</script>
+</body>
+</html>
