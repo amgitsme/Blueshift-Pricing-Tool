@@ -220,60 +220,65 @@
     background: var(--panel);
     border-top: 1px solid var(--border);
     border-right: 1px solid var(--border);
-    padding: 10px 12px;
-    min-height: 78px;
+    padding: 12px 14px;
+    flex: 1;                /* fill all remaining left-column space */
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 0;
     overflow-y: auto;
+    min-height: 0;          /* allow flex shrink below content size */
   }
-  .stats-panel::-webkit-scrollbar { width:3px; }
+  .stats-panel::-webkit-scrollbar { width:4px; }
   .stats-panel::-webkit-scrollbar-thumb { background:var(--border-bright); }
   .stats-header {
     font-family: 'Orbitron', sans-serif;
-    font-size: 8px;
+    font-size: 12px;
     letter-spacing: 3px;
     color: var(--accent);
     text-transform: uppercase;
-    margin-bottom: 3px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--border);
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-bright);
     flex-shrink: 0;
   }
   .stats-empty {
-    font-size: 10px;
+    font-size: 14px;
     color: var(--text-dim);
     letter-spacing: 1px;
     font-style: italic;
+    margin-top: 10px;
   }
   .stats-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3px 10px;
+    grid-template-columns: 1fr;   /* single column — full width for names */
+    gap: 0;
+    flex: 1;
   }
   .stat-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 6px;
-    padding: 2px 0;
-    border-bottom: 1px solid rgba(26,58,92,0.3);
+    gap: 10px;
+    padding: 5px 4px;
+    border-bottom: 1px solid rgba(26,58,92,0.4);
+    transition: background 0.1s;
   }
+  .stat-row:hover { background: var(--row-hover); }
   .stat-name {
-    font-size: 10px;
-    color: var(--text-dim);
+    font-size: 14px;
+    color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     flex: 1;
   }
   .stat-count {
-    font-size: 11px;
+    font-size: 15px;
     font-weight: bold;
     color: var(--accent2);
     text-shadow: var(--glow-green);
     flex-shrink: 0;
-    min-width: 18px;
+    min-width: 36px;
     text-align: right;
   }
   .stat-count.multi { color: var(--gold); text-shadow: 0 0 6px rgba(255,198,66,0.4); }
@@ -283,7 +288,7 @@
   .exotic-sep-line { flex:1;height:1px;background:linear-gradient(90deg,var(--border),rgba(255,107,53,0.4),var(--border)); }
   .exotic-sep-label { font-family:'Orbitron',sans-serif;font-size:11px;color:var(--accent3);letter-spacing:4px;text-shadow:0 0 8px rgba(255,107,53,0.4); }
 
-  /* ── BULK APPLY BAR ── */
+  /* ── POWER APPLY BAR (kept for bulk power) ── */
   .bulk-bar {
     background: linear-gradient(90deg, rgba(0,207,255,0.05), rgba(0,207,255,0.02));
     border-bottom: 1px solid var(--border);
@@ -293,32 +298,63 @@
     gap: 8px;
     align-items: center;
   }
+  .bulk-group { display:flex;align-items:center;gap:6px;background:rgba(0,0,0,0.25);border:1px solid var(--border);border-radius:3px;padding:5px 9px; }
+  .bulk-label { font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;white-space:nowrap; }
+  .bulk-select {
+    background:var(--bg);border:1px solid var(--border);color:var(--text);
+    font-family:'Share Tech Mono',monospace;font-size:12px;padding:4px 24px 4px 7px;
+    border-radius:2px;cursor:pointer;appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a8aaa'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 6px center;transition:border-color 0.15s;min-width:110px;
+  }
+  .bulk-select:focus { outline:none;border-color:var(--accent); }
+  .bulk-select.has-value { border-color:rgba(0,207,255,0.45);color:var(--accent); }
+  .bulk-apply { font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;padding:4px 10px;border:1px solid var(--accent);background:rgba(0,207,255,0.08);color:var(--accent);border-radius:2px;cursor:pointer;transition:all 0.15s;white-space:nowrap; }
+  .bulk-apply:hover { background:rgba(0,207,255,0.18);box-shadow:var(--glow); }
+  .bulk-clear { font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:3px 8px;border:1px solid rgba(255,68,85,0.35);background:transparent;color:var(--red);border-radius:2px;cursor:pointer;transition:background 0.15s; }
+  .bulk-clear:hover { background:rgba(255,68,85,0.1); }
 
-  .bulk-group {
+  /* ── ENHANCER PANEL (3 slot boxes) ── */
+  .enhancer-panel {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    background: rgba(0,0,0,0.15);
+  }
+  .enh-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .enh-box.has-mod { border-color: rgba(0,207,255,0.4); }
+  .enh-box-header {
+    background: linear-gradient(90deg,rgba(0,207,255,0.08),transparent);
+    border-bottom: 1px solid var(--border);
+    padding: 5px 10px;
     display: flex;
     align-items: center;
     gap: 6px;
-    background: rgba(0,0,0,0.25);
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 5px 9px;
   }
-
-  .bulk-label {
-    font-size: 8px;
+  .enh-slot-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
     letter-spacing: 2px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    white-space: nowrap;
+    color: var(--accent);
   }
-
-  .bulk-select {
+  .enh-box-body { padding: 8px 10px; }
+  .enh-mod-select {
+    width: 100%;
     background: var(--bg);
     border: 1px solid var(--border);
     color: var(--text);
     font-family: 'Share Tech Mono', monospace;
-    font-size: 11px;
-    padding: 4px 24px 4px 7px;
+    font-size: 12px;
+    padding: 5px 24px 5px 7px;
     border-radius: 2px;
     cursor: pointer;
     appearance: none;
@@ -326,55 +362,95 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a8aaa'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 6px center;
+    margin-bottom: 8px;
     transition: border-color 0.15s;
-    min-width: 110px;
   }
+  .enh-mod-select:focus { outline:none; border-color:var(--accent); box-shadow:var(--glow); }
+  .enh-mod-select.has-value { border-color:rgba(0,207,255,0.4); color:var(--accent); }
+  .enh-mod-select.needs-loot { border-color:rgba(255,207,68,0.5); color:#ffcf44; }
 
-  .bulk-select:focus { outline: none; border-color: var(--accent); }
-  .bulk-select.has-value { border-color: rgba(0,207,255,0.45); color: var(--accent); }
+  /* checkbox grid inside each enhancer box */
+  .enh-checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px 4px;
+    margin-bottom: 8px;
+  }
+  .enh-cb-item {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+  }
+  .enh-cb-item input[type="checkbox"] {
+    width: 13px;
+    height: 13px;
+    cursor: pointer;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+  }
+  .enh-cb-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    line-height: 1.2;
+    user-select: none;
+  }
+  .enh-cb-label.exotic { color: var(--accent3); }
+  .enh-cb-item.checked .enh-cb-label { color: var(--accent); }
+  .enh-cb-item.checked .enh-cb-label.exotic { color: var(--accent3); }
 
-  .bulk-apply {
+  /* select-all row */
+  .enh-sel-row {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 7px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .enh-sel-btn {
     font-family: 'Share Tech Mono', monospace;
     font-size: 10px;
+    padding: 2px 7px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .enh-sel-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* apply + clear row */
+  .enh-action-row { display:flex; gap:5px; }
+  .enh-apply-btn {
+    flex: 1;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    font-weight: 600;
     letter-spacing: 1px;
-    padding: 4px 10px;
+    padding: 6px 0;
     border: 1px solid var(--accent);
-    background: rgba(0,207,255,0.08);
+    background: rgba(0,207,255,0.1);
     color: var(--accent);
     border-radius: 2px;
     cursor: pointer;
     transition: all 0.15s;
-    white-space: nowrap;
+    text-transform: uppercase;
   }
-  .bulk-apply:hover { background: rgba(0,207,255,0.18); box-shadow: var(--glow); }
-
-  .bulk-apply.enhance-btn {
-    border-color: var(--accent2);
-    background: rgba(0,255,157,0.07);
-    color: var(--accent2);
-  }
-  .bulk-apply.enhance-btn:hover { background: rgba(0,255,157,0.16); box-shadow: var(--glow-green); }
-
-  .bulk-divider {
-    width: 1px;
-    height: 24px;
-    background: var(--border);
-    flex-shrink: 0;
-  }
-
-  .bulk-clear {
+  .enh-apply-btn:hover { background:rgba(0,207,255,0.2); box-shadow:var(--glow); }
+  .enh-clear-btn {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 1px;
-    padding: 3px 8px;
+    font-size: 11px;
+    padding: 6px 10px;
     border: 1px solid rgba(255,68,85,0.35);
     background: transparent;
     color: var(--red);
     border-radius: 2px;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.12s;
   }
-  .bulk-clear:hover { background: rgba(255,68,85,0.1); }
+  .enh-clear-btn:hover { background: rgba(255,68,85,0.1); }
 
   /* toast */
   .toast { position:fixed;bottom:20px;right:20px;background:var(--panel);border:1px solid var(--accent2);color:var(--accent2);font-family:'Share Tech Mono',monospace;font-size:14px;padding:9px 14px;border-radius:3px;box-shadow:var(--glow-green),0 4px 20px rgba(0,0,0,0.5);transform:translateY(60px);opacity:0;transition:all 0.3s;z-index:300;letter-spacing:1px; }
@@ -521,9 +597,8 @@
       <div class="panel-title">SEA Configuration</div>
     </div>
 
-    <!-- BULK APPLY BAR -->
+    <!-- POWER BAR -->
     <div class="bulk-bar">
-      <!-- All Power -->
       <div class="bulk-group">
         <span class="bulk-label">All Power</span>
         <select class="bulk-select" id="bulk-power">
@@ -532,22 +607,75 @@
         <button class="bulk-apply" onclick="applyBulkPower()">▶ APPLY ALL</button>
         <button class="bulk-clear" onclick="clearBulkPower()" title="Clear power on all SEAs + Exotics">✕</button>
       </div>
+    </div>
 
-      <div class="bulk-divider"></div>
-
-      <!-- All Enhance (SEAs only) -->
-      <div class="bulk-group">
-        <span class="bulk-label">SEA Enhance</span>
-        <select class="bulk-select" id="bulk-enhance-slot">
-          <option value="enhance1">Slot 1</option>
-          <option value="enhance2">Slot 2</option>
-          <option value="enhance3">Slot 3</option>
-        </select>
-        <select class="bulk-select" id="bulk-enhance-mod" style="min-width:200px">
-          <option value="">— modifier —</option>
-        </select>
-        <button class="bulk-apply enhance-btn" onclick="applyBulkEnhance()">▶ APPLY ALL</button>
-        <button class="bulk-clear" onclick="clearBulkEnhance()" title="Clear this enhance slot on all SEAs">✕</button>
+    <!-- ENHANCER PANEL — 3 slot boxes -->
+    <div class="enhancer-panel" id="enhancer-panel">
+      <!-- Slot 1 -->
+      <div class="enh-box" id="enh-box-0">
+        <div class="enh-box-header">
+          <span class="enh-slot-label">ENHANCE SLOT 1</span>
+        </div>
+        <div class="enh-box-body">
+          <select class="enh-mod-select" id="enh-mod-0" onchange="onEnhModChange(0)">
+            <option value="">— select modifier —</option>
+          </select>
+          <div class="enh-sel-row">
+            <button class="enh-sel-btn" onclick="enhSelectAll(0)">All</button>
+            <button class="enh-sel-btn" onclick="enhSelectNone(0)">None</button>
+            <button class="enh-sel-btn" onclick="enhSelectSEAs(0)">SEAs</button>
+            <button class="enh-sel-btn" onclick="enhSelectExotics(0)">Exotics</button>
+          </div>
+          <div class="enh-checkbox-grid" id="enh-cb-grid-0"></div>
+          <div class="enh-action-row">
+            <button class="enh-apply-btn" onclick="applyEnhancer(0)">▶ APPLY</button>
+            <button class="enh-clear-btn" onclick="clearEnhancer(0)" title="Clear slot 1 from selected SEAs">✕</button>
+          </div>
+        </div>
+      </div>
+      <!-- Slot 2 -->
+      <div class="enh-box" id="enh-box-1">
+        <div class="enh-box-header">
+          <span class="enh-slot-label">ENHANCE SLOT 2</span>
+        </div>
+        <div class="enh-box-body">
+          <select class="enh-mod-select" id="enh-mod-1" onchange="onEnhModChange(1)">
+            <option value="">— select modifier —</option>
+          </select>
+          <div class="enh-sel-row">
+            <button class="enh-sel-btn" onclick="enhSelectAll(1)">All</button>
+            <button class="enh-sel-btn" onclick="enhSelectNone(1)">None</button>
+            <button class="enh-sel-btn" onclick="enhSelectSEAs(1)">SEAs</button>
+            <button class="enh-sel-btn" onclick="enhSelectExotics(1)">Exotics</button>
+          </div>
+          <div class="enh-checkbox-grid" id="enh-cb-grid-1"></div>
+          <div class="enh-action-row">
+            <button class="enh-apply-btn" onclick="applyEnhancer(1)">▶ APPLY</button>
+            <button class="enh-clear-btn" onclick="clearEnhancer(1)" title="Clear slot 2 from selected SEAs">✕</button>
+          </div>
+        </div>
+      </div>
+      <!-- Slot 3 -->
+      <div class="enh-box" id="enh-box-2">
+        <div class="enh-box-header">
+          <span class="enh-slot-label">ENHANCE SLOT 3</span>
+        </div>
+        <div class="enh-box-body">
+          <select class="enh-mod-select" id="enh-mod-2" onchange="onEnhModChange(2)">
+            <option value="">— select modifier —</option>
+          </select>
+          <div class="enh-sel-row">
+            <button class="enh-sel-btn" onclick="enhSelectAll(2)">All</button>
+            <button class="enh-sel-btn" onclick="enhSelectNone(2)">None</button>
+            <button class="enh-sel-btn" onclick="enhSelectSEAs(2)">SEAs</button>
+            <button class="enh-sel-btn" onclick="enhSelectExotics(2)">Exotics</button>
+          </div>
+          <div class="enh-checkbox-grid" id="enh-cb-grid-2"></div>
+          <div class="enh-action-row">
+            <button class="enh-apply-btn" onclick="applyEnhancer(2)">▶ APPLY</button>
+            <button class="enh-clear-btn" onclick="clearEnhancer(2)" title="Clear slot 3 from selected SEAs">✕</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1530,34 +1658,128 @@ function resetDefaults() {
 // BULK APPLY
 // ═══════════════════════════════════════════════════════════════════
 
+// SEA labels for checkbox grids: 9 standard + 3 exotic
+const SEA_LABELS = [
+  { id:'standard-0', label:'SEA 1',    group:'standard', idx:0, exotic:false },
+  { id:'standard-1', label:'SEA 2',    group:'standard', idx:1, exotic:false },
+  { id:'standard-2', label:'SEA 3',    group:'standard', idx:2, exotic:false },
+  { id:'standard-3', label:'SEA 4',    group:'standard', idx:3, exotic:false },
+  { id:'standard-4', label:'SEA 5',    group:'standard', idx:4, exotic:false },
+  { id:'standard-5', label:'SEA 6',    group:'standard', idx:5, exotic:false },
+  { id:'standard-6', label:'SEA 7',    group:'standard', idx:6, exotic:false },
+  { id:'standard-7', label:'SEA 8',    group:'standard', idx:7, exotic:false },
+  { id:'standard-8', label:'SEA 9',    group:'standard', idx:8, exotic:false },
+  { id:'exotic-0',   label:'EX 1',     group:'exotic',   idx:0, exotic:true  },
+  { id:'exotic-1',   label:'EX 2',     group:'exotic',   idx:1, exotic:true  },
+  { id:'exotic-2',   label:'EX 3',     group:'exotic',   idx:2, exotic:true  },
+];
+
 function populateBulkSelects() {
-  // Power bulk select — built from current cfg
+  // Power bulk select
   const bp = document.getElementById('bulk-power');
   const prevPower = bp.value;
   bp.innerHTML = '<option value="">— select —</option>' +
     cfg.powerBits.map(pb => `<option value="${pb.plusVal}" ${prevPower==pb.plusVal?'selected':''}>+${pb.plusVal}</option>`).join('');
   bp.classList.toggle('has-value', !!bp.value);
 
-  // Enhance modifier bulk select — full modifier list with loot tags
-  const bm = document.getElementById('bulk-enhance-mod');
-  const prevMod = bm.value;
-  bm.innerHTML = '<option value="">— modifier —</option>' +
-    MODIFIERS.map(m => `<option value="${m}" ${prevMod===m?'selected':''}>${m}${lootTag(m)}</option>`).join('');
-  bm.classList.toggle('has-value', !!bm.value);
+  // Build the 3 enhancer box checkbox grids + modifier selects
+  const modOptions = '<option value="">— select modifier —</option>' +
+    MODIFIERS.map(m => `<option value="${m}">${m}${lootTag(m)}</option>`).join('');
+
+  [0,1,2].forEach(slot => {
+    // Populate modifier dropdown
+    const sel = document.getElementById(`enh-mod-${slot}`);
+    if (sel) {
+      const prev = sel.value;
+      sel.innerHTML = modOptions;
+      if (prev) sel.value = prev;
+      sel.classList.toggle('has-value', !!sel.value);
+    }
+    // Build checkbox grid
+    const grid = document.getElementById(`enh-cb-grid-${slot}`);
+    if (!grid) return;
+    grid.innerHTML = SEA_LABELS.map(sea =>
+      `<label class="enh-cb-item" id="enh-cb-item-${slot}-${sea.id}">
+        <input type="checkbox" id="enh-cb-${slot}-${sea.id}" checked>
+        <span class="enh-cb-label ${sea.exotic ? 'exotic' : ''}">${sea.label}</span>
+      </label>`
+    ).join('');
+  });
+}
+
+function onEnhModChange(slot) {
+  const sel = document.getElementById(`enh-mod-${slot}`);
+  const box = document.getElementById(`enh-box-${slot}`);
+  if (sel) {
+    sel.classList.toggle('has-value', !!sel.value);
+    sel.classList.toggle('needs-loot', !!sel.value && (NEEDS_GACKLE.has(sel.value)||NEEDS_CAP.has(sel.value)));
+  }
+  if (box) box.classList.toggle('has-mod', !!sel?.value);
+}
+
+function enhSelectAll(slot) {
+  SEA_LABELS.forEach(sea => {
+    const cb = document.getElementById(`enh-cb-${slot}-${sea.id}`);
+    if (cb) cb.checked = true;
+  });
+}
+function enhSelectNone(slot) {
+  SEA_LABELS.forEach(sea => {
+    const cb = document.getElementById(`enh-cb-${slot}-${sea.id}`);
+    if (cb) cb.checked = false;
+  });
+}
+function enhSelectSEAs(slot) {
+  SEA_LABELS.forEach(sea => {
+    const cb = document.getElementById(`enh-cb-${slot}-${sea.id}`);
+    if (cb) cb.checked = !sea.exotic;
+  });
+}
+function enhSelectExotics(slot) {
+  SEA_LABELS.forEach(sea => {
+    const cb = document.getElementById(`enh-cb-${slot}-${sea.id}`);
+    if (cb) cb.checked = sea.exotic;
+  });
+}
+
+function applyEnhancer(slot) {
+  const mod = document.getElementById(`enh-mod-${slot}`)?.value;
+  if (!mod) { showToast('Select a modifier first.'); return; }
+  const field = `enhance${slot+1}`;
+  let count = 0;
+  SEA_LABELS.forEach(sea => {
+    const cb = document.getElementById(`enh-cb-${slot}-${sea.id}`);
+    if (cb?.checked) {
+      state[sea.group][sea.idx][field] = mod;
+      count++;
+    }
+  });
+  renderSEAGrid();
+  renderPriceSheet();
+  showToast(`"${mod}" applied to Slot ${slot+1} on ${count} SEA(s).`);
+}
+
+function clearEnhancer(slot) {
+  const field = `enhance${slot+1}`;
+  let count = 0;
+  SEA_LABELS.forEach(sea => {
+    const cb = document.getElementById(`enh-cb-${slot}-${sea.id}`);
+    if (cb?.checked) {
+      state[sea.group][sea.idx][field] = '';
+      count++;
+    }
+  });
+  renderSEAGrid();
+  renderPriceSheet();
+  showToast(`Slot ${slot+1} cleared on ${count} SEA(s).`);
 }
 
 function applyBulkPower() {
   const val = document.getElementById('bulk-power').value;
   if (!val) { showToast('Select a power level first.'); return; }
   const pv = parseInt(val);
-  // Apply to all 9 standard SEAs
-  state.standard.forEach((s,i) => {
-    s.power = pv;
-  });
-  // Apply to all 3 exotic SEAs
-  state.exotic.forEach((s,i) => {
-    s.power = pv;
-  });
+  state.standard.forEach(s => { s.power = pv; });
+  state.exotic.forEach(s   => { s.power = pv; });
   document.getElementById('bulk-power').classList.add('has-value');
   renderSEAGrid();
   renderPriceSheet();
@@ -1572,32 +1794,6 @@ function clearBulkPower() {
   renderSEAGrid();
   renderPriceSheet();
   showToast('Power cleared on all SEAs & Exotics.');
-}
-
-function applyBulkEnhance() {
-  const slot = document.getElementById('bulk-enhance-slot').value;  // e.g. 'enhance1'
-  const mod  = document.getElementById('bulk-enhance-mod').value;
-  if (!mod) { showToast('Select a modifier first.'); return; }
-  // Apply only to standard SEAs (not exotics)
-  state.standard.forEach((s,i) => {
-    s[slot] = mod;
-  });
-  document.getElementById('bulk-enhance-mod').classList.add('has-value');
-  renderSEAGrid();
-  renderPriceSheet();
-  const slotNum = slot.replace('enhance','');
-  showToast(`"${mod}" applied to Enhance ${slotNum} on all SEAs.`);
-}
-
-function clearBulkEnhance() {
-  const slot = document.getElementById('bulk-enhance-slot').value;
-  state.standard.forEach(s => { s[slot] = ''; });
-  document.getElementById('bulk-enhance-mod').value = '';
-  document.getElementById('bulk-enhance-mod').classList.remove('has-value');
-  renderSEAGrid();
-  renderPriceSheet();
-  const slotNum = slot.replace('enhance','');
-  showToast(`Enhance ${slotNum} cleared on all SEAs.`);
 }
 
 // ═══════════════════════════════════════════════════════════════════
