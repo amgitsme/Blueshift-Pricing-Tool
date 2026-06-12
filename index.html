@@ -220,13 +220,13 @@
     background: var(--panel);
     border-top: 1px solid var(--border);
     border-right: 1px solid var(--border);
-    padding: 12px 14px;
-    flex: 1;                /* fill all remaining left-column space */
+    padding: 10px 14px;
+    max-height: 220px;      /* capped so price sheet stays fully visible */
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     gap: 0;
     overflow-y: auto;
-    min-height: 0;          /* allow flex shrink below content size */
   }
   .stats-panel::-webkit-scrollbar { width:4px; }
   .stats-panel::-webkit-scrollbar-thumb { background:var(--border-bright); }
@@ -516,6 +516,35 @@
   .btn-admin-reset { background:rgba(255,198,66,0.06);border:1px solid rgba(255,198,66,0.4);color:var(--gold); }
   .btn-admin-reset:hover { background:rgba(255,198,66,0.12); }
 
+  /* export/import string */
+  .export-string-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--accent2);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 8px 10px;
+    border-radius: 2px;
+    width: 100%;
+    resize: vertical;
+    min-height: 64px;
+    letter-spacing: 0.5px;
+    transition: border-color 0.15s;
+  }
+  .export-string-box:focus { outline:none; border-color:var(--accent); }
+  .btn-export {
+    font-family:'Orbitron',sans-serif;font-size:10px;font-weight:600;letter-spacing:2px;
+    padding:7px 14px;border-radius:2px;cursor:pointer;transition:all 0.15s;text-transform:uppercase;
+    background:rgba(0,255,157,0.08);border:1px solid var(--accent2);color:var(--accent2);
+  }
+  .btn-export:hover { background:rgba(0,255,157,0.18); box-shadow:var(--glow-green); }
+  .btn-import {
+    font-family:'Orbitron',sans-serif;font-size:10px;font-weight:600;letter-spacing:2px;
+    padding:7px 14px;border-radius:2px;cursor:pointer;transition:all 0.15s;text-transform:uppercase;
+    background:rgba(176,106,255,0.08);border:1px solid var(--admin);color:var(--admin);
+  }
+  .btn-import:hover { background:rgba(176,106,255,0.18); box-shadow:var(--glow-admin); }
+
   .admin-note { font-size:12px;color:var(--text-dim);letter-spacing:1px;margin-top:6px;font-style:italic; }
 
   @media (max-width:900px) {
@@ -529,8 +558,8 @@
 
 <header>
   <div>
-    <div class="logo-mark">RE CALC</div>
-    <div class="logo-sub">Reverse Engineering Price System</div>
+    <div class="logo-mark">BLUESHIFT</div>
+    <div class="logo-sub">SEA ORDER FORM</div>
   </div>
   <div class="header-divider"></div>
   <div class="header-btns">
@@ -685,6 +714,7 @@
     <div class="controls-bar">
       <div class="controls-left">
         <button class="btn btn-primary" onclick="copyToClipboard()">⎘ COPY OUTPUT</button>
+        <button class="btn btn-export" onclick="exportOrderString()">⬆ EXPORT ORDER</button>
         <button class="btn btn-danger" onclick="resetAll()">✕ RESET</button>
       </div>
       <textarea class="copy-output" id="copy-output" readonly placeholder="Configure SEAs to generate order summary..."></textarea>
@@ -1560,6 +1590,17 @@ function buildAdminUI() {
     </div>
   </div>`;
 
+  // ── Import Order ─────────────────────────────────────────────────────
+  html += '<div class="admin-section">';
+  html += '<div class="admin-section-title">Import Customer Order</div>';
+  html += '<div style="font-size:12px;color:var(--text-dim);letter-spacing:1px;margin-bottom:10px;">Paste a customer export string below and click Load Order to view their configuration.</div>';
+  html += '<textarea class="export-string-box" id="admin-import-box" placeholder="Paste customer export string here..."></textarea>';
+  html += '<div style="display:flex;gap:8px;margin-top:8px;">';
+  html += '<button class="btn btn-import" onclick="adminImportOrder()">⬇ LOAD ORDER</button>';
+  html += '<button class="btn btn-admin-reset" style="padding:7px 14px;" onclick="var b=document.getElementById(&quot;admin-import-box&quot;);if(b)b.value=&quot;&quot;">✕ CLEAR</button>';
+  html += '</div>';
+  html += '</div>';
+
   // ── Rare loot ──────────────────────────────────────
   html += `<div class="admin-section">
     <div class="admin-section-title">Rare Loot Prices</div>
@@ -1700,7 +1741,7 @@ function populateBulkSelects() {
     if (!grid) return;
     grid.innerHTML = SEA_LABELS.map(sea =>
       `<label class="enh-cb-item" id="enh-cb-item-${slot}-${sea.id}">
-        <input type="checkbox" id="enh-cb-${slot}-${sea.id}" checked>
+        <input type="checkbox" id="enh-cb-${slot}-${sea.id}">
         <span class="enh-cb-label ${sea.exotic ? 'exotic' : ''}">${sea.label}</span>
       </label>`
     ).join('');
@@ -1794,6 +1835,82 @@ function clearBulkPower() {
   renderSEAGrid();
   renderPriceSheet();
   showToast('Power cleared on all SEAs & Exotics.');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// EXPORT / IMPORT ORDER STRING
+// ═══════════════════════════════════════════════════════════════════
+
+function exportOrderString() {
+  // Encode the full order as a compact base64 JSON string
+  const payload = {
+    v: 1,  // version
+    standard: state.standard.map(s => ({
+      p: s.power,
+      t: s.type,
+      e1: s.enhance1 || '',
+      e2: s.enhance2 || '',
+      e3: s.enhance3 || '',
+    })),
+    exotic: state.exotic.map(s => ({
+      p: s.power,
+      e1: s.enhance1 || '',
+      e2: s.enhance2 || '',
+      e3: s.enhance3 || '',
+    })),
+    disc: state.discount,
+    ts: new Date().toISOString(),
+  };
+  const str = btoa(JSON.stringify(payload));
+  // Copy to clipboard
+  navigator.clipboard.writeText(str).then(() => {
+    showToast('Order string copied to clipboard!');
+  }).catch(() => {
+    // Fallback: show in a prompt
+    prompt('Copy this order string:', str);
+  });
+}
+
+function adminImportOrder() {
+  const box = document.getElementById('admin-import-box');
+  if (!box || !box.value.trim()) {
+    showToast('Paste an order string first.');
+    return;
+  }
+  try {
+    const payload = JSON.parse(atob(box.value.trim()));
+    if (payload.v !== 1) throw new Error('Unknown version');
+
+    // Load standard SEAs
+    payload.standard.forEach((s, i) => {
+      if (i < state.standard.length) {
+        state.standard[i].power    = s.p ? parseInt(s.p) : null;
+        state.standard[i].type     = s.t || 'Armor';
+        state.standard[i].enhance1 = s.e1 || '';
+        state.standard[i].enhance2 = s.e2 || '';
+        state.standard[i].enhance3 = s.e3 || '';
+      }
+    });
+    // Load exotic SEAs
+    payload.exotic.forEach((s, i) => {
+      if (i < state.exotic.length) {
+        state.exotic[i].power    = s.p ? parseInt(s.p) : null;
+        state.exotic[i].enhance1 = s.e1 || '';
+        state.exotic[i].enhance2 = s.e2 || '';
+        state.exotic[i].enhance3 = s.e3 || '';
+      }
+    });
+
+    closeAdmin();
+    renderSEAGrid();
+    renderPriceSheet();
+    populateBulkSelects();
+
+    const ts = payload.ts ? new Date(payload.ts).toLocaleString() : 'unknown';
+    showToast(`Order loaded! Submitted: ${ts}`);
+  } catch(e) {
+    showToast('Invalid order string — could not load.');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
