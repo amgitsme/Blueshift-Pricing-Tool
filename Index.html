@@ -563,7 +563,6 @@
   </div>
   <div class="header-divider"></div>
   <div class="header-btns">
-    <button class="admin-btn" onclick="openAdmin()">⚙ ADMIN</button>
     <div class="status-indicator">
       <div class="status-dot"></div>
       SYSTEM ONLINE
@@ -715,6 +714,15 @@
       <div class="controls-left">
         <button class="btn btn-primary" onclick="copyToClipboard()">⎘ COPY OUTPUT</button>
         <button class="btn btn-export" onclick="exportOrderString()">⬆ EXPORT ORDER</button>
+        <button class="btn" onclick="saveOrderForLater()"
+          style="background:rgba(0,255,157,0.08);border:1px solid var(--accent2);color:var(--accent2);">
+          💾 SAVE ORDER
+        </button>
+        <label class="btn" style="background:rgba(0,207,255,0.08);border:1px solid var(--accent);color:var(--accent);cursor:pointer;">
+          📂 LOAD ORDER
+          <input type="file" id="load-order-input" accept=".bsea,.txt" style="display:none" onchange="loadSavedOrder(this)">
+        </label>
+
         <button class="btn btn-danger" onclick="resetAll()">✕ RESET</button>
       </div>
       <textarea class="copy-output" id="copy-output" readonly placeholder="Configure SEAs to generate order summary..."></textarea>
@@ -727,7 +735,6 @@
   <div class="admin-modal">
     <div class="admin-modal-header">
       <div class="admin-modal-title">⚙ ADMIN PANEL</div>
-      <a href="Blueshift_Crafting.html" target="_blank" style="font-family:Share Tech Mono,monospace;font-size:10px;color:var(--accent2);border:1px solid rgba(0,255,157,0.4);padding:3px 10px;border-radius:2px;text-decoration:none;letter-spacing:1px;background:rgba(0,255,157,0.06);">⚗ CRAFTING SHEET ↗</a>
       <button class="admin-close" onclick="closeAdmin()">✕ CLOSE</button>
     </div>
     <div class="admin-modal-body" id="admin-body">
@@ -1406,9 +1413,10 @@ function resetAll() {
   state.standard = Array.from({length:9},()=>({ power:null, type:'Armor', enhance1:'', enhance2:'', enhance3:'' }));
   state.exotic   = EXOTIC_SEAS.map(()=>({ power:null, enhance1:'', enhance2:'', enhance3:'' }));
   state.discount = 'none';
+  if (window.electronAPI) window.electronAPI.clearOrder();
   renderSEAGrid();
   renderPriceSheet();
-  showToast('Configuration reset.');
+  showToast('Order cleared.');
 }
 
 function renderRunningStats() {
@@ -1519,8 +1527,75 @@ function updateCopyOutput() {
 function copyToClipboard() {
   const ta = document.getElementById('copy-output');
   if (!ta.value) { showToast('Nothing to copy yet.'); return; }
-  navigator.clipboard.writeText(ta.value).then(()=>showToast('Copied to clipboard!'));
+  navigator.clipboard.writeText(ta.value)
+    .then(()=>showToast('Copied to clipboard!'))
+    .catch(()=>showToast('Copy failed — try Export Order instead.'));
 }
+
+// goHome — not used in web version
+
+function buildOrderPayload() {
+  return {
+    v: 1,
+    standard: state.standard.map(s => ({
+      p: s.power, t: s.type,
+      e1: s.enhance1||'', e2: s.enhance2||'', e3: s.enhance3||'',
+    })),
+    exotic: state.exotic.map(s => ({
+      p: s.power,
+      e1: s.enhance1||'', e2: s.enhance2||'', e3: s.enhance3||'',
+    })),
+    disc: state.discount,
+    ts: new Date().toISOString(),
+  };
+}
+
+function persistOrder() {
+  // Web version: save to sessionStorage so order survives page refresh
+  try {
+    const configured = [...state.standard, ...state.exotic].some(s => s.power !== null);
+    if (configured) sessionStorage.setItem('blueshift-order', JSON.stringify(buildOrderPayload()));
+  } catch(e) {}
+}
+
+function saveOrderForLater() {
+  const configured = [...state.standard, ...state.exotic].some(s => s.power !== null);
+  if (!configured) { showToast('Nothing to save — configure some SEAs first.'); return; }
+  const payload = buildOrderPayload();
+  const str = JSON.stringify(payload, null, 2);
+  const blob = new Blob([str], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'blueshift-order-' + new Date().toISOString().slice(0,10) + '.bsea';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Order downloaded!');
+}
+
+function loadSavedOrder(input) {
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const payload = JSON.parse(e.target.result);
+      if (applyOrderPayload(payload)) {
+        showToast('Order loaded: ' + file.name);
+      } else {
+        showToast('Could not read that order file.');
+      }
+    } catch {
+      showToast('Invalid order file.');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// goToCraftingSheet — not used in web version
+
+// goToCraftingPlan — not used in web version
 
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -1532,63 +1607,17 @@ function showToast(msg) {
 // ═══════════════════════════════════════════════════════════════════
 // ADMIN PANEL
 // ═══════════════════════════════════════════════════════════════════
-const ADMIN_PASSWORD = 'blu1234';
-let adminUnlocked = false;
-
 function openAdmin() {
+  document.querySelector('.admin-footer').style.display = 'flex';
   document.getElementById('admin-overlay').classList.add('open');
-  if (adminUnlocked) {
-    document.querySelector('.admin-footer').style.display = 'flex';
-    buildAdminUI();
-  } else {
-    showPasswordScreen();
-  }
+  buildAdminUI();
 }
 
 function closeAdmin() {
   document.getElementById('admin-overlay').classList.remove('open');
 }
 
-function showPasswordScreen() {
-  document.querySelector('.admin-footer').style.display = 'none';
-  document.getElementById('admin-body').innerHTML = `
-    <div class="pw-screen">
-      <div class="pw-icon">&#128272;</div>
-      <div class="pw-title">Admin Access Required</div>
-      <div class="pw-field-wrap">
-        <input class="pw-input" id="pw-input" type="password"
-          placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"
-          onkeydown="if(event.key==='Enter')checkPassword()"
-          autocomplete="off">
-        <button class="pw-submit" onclick="checkPassword()">ENTER</button>
-      </div>
-      <div class="pw-error-msg" id="pw-error-msg"></div>
-    </div>`;
-  setTimeout(() => { const i = document.getElementById('pw-input'); if(i) i.focus(); }, 50);
-}
 
-function checkPassword() {
-  const inp = document.getElementById('pw-input');
-  if (!inp) return;
-  if (inp.value === ADMIN_PASSWORD) {
-    adminUnlocked = true;
-    document.querySelector('.admin-footer').style.display = 'flex';
-    buildAdminUI();
-  } else {
-    inp.classList.remove('pw-error');
-    void inp.offsetWidth;
-    inp.classList.add('pw-error');
-    const msg = document.getElementById('pw-error-msg');
-    if (msg) msg.textContent = 'INCORRECT PASSWORD';
-    inp.value = '';
-    setTimeout(() => {
-      const inp2 = document.getElementById('pw-input');
-      if (inp2) inp2.classList.remove('pw-error');
-      const m = document.getElementById('pw-error-msg');
-      if (m) m.textContent = '';
-    }, 1800);
-  }
-}
 
 function adminSetDiscount(type) {
   state.discount = type;
@@ -1635,6 +1664,7 @@ function buildAdminUI() {
   html += '<textarea class="export-string-box" id="admin-import-box" placeholder="Paste customer export string here..."></textarea>';
   html += '<div style="display:flex;gap:8px;margin-top:8px;">';
   html += '<button class="btn btn-import" onclick="adminImportOrder()">⬇ LOAD ORDER</button>';
+
   html += '<button class="btn btn-admin-reset" style="padding:7px 14px;" onclick="var b=document.getElementById(&quot;admin-import-box&quot;);if(b)b.value=&quot;&quot;">✕ CLEAR</button>';
   html += '</div>';
   html += '</div>';
@@ -1880,33 +1910,42 @@ function clearBulkPower() {
 // ═══════════════════════════════════════════════════════════════════
 
 function exportOrderString() {
-  // Encode the full order as a compact base64 JSON string
-  const payload = {
-    v: 1,  // version
-    standard: state.standard.map(s => ({
-      p: s.power,
-      t: s.type,
-      e1: s.enhance1 || '',
-      e2: s.enhance2 || '',
-      e3: s.enhance3 || '',
-    })),
-    exotic: state.exotic.map(s => ({
-      p: s.power,
-      e1: s.enhance1 || '',
-      e2: s.enhance2 || '',
-      e3: s.enhance3 || '',
-    })),
-    disc: state.discount,
-    ts: new Date().toISOString(),
-  };
+  const payload = buildOrderPayload();
   const str = btoa(JSON.stringify(payload));
-  // Copy to clipboard
-  navigator.clipboard.writeText(str).then(() => {
-    showToast('Order string copied to clipboard!');
-  }).catch(() => {
-    // Fallback: show in a prompt
-    prompt('Copy this order string:', str);
+  navigator.clipboard.writeText(str)
+    .then(() => showToast('Order string copied to clipboard!'))
+    .catch(() => prompt('Copy this order string:', str));
+}
+
+// adminOpenFile — Electron only, not used in web version
+
+function applyOrderPayload(payload) {
+  // Loads a decoded order payload into app state and re-renders.
+  // Returns true on success.
+  if (!payload || payload.v !== 1) return false;
+  payload.standard.forEach((s, i) => {
+    if (i < state.standard.length) {
+      state.standard[i].power    = s.p ? parseInt(s.p) : null;
+      state.standard[i].type     = s.t || 'Armor';
+      state.standard[i].enhance1 = s.e1 || '';
+      state.standard[i].enhance2 = s.e2 || '';
+      state.standard[i].enhance3 = s.e3 || '';
+    }
   });
+  payload.exotic.forEach((s, i) => {
+    if (i < state.exotic.length) {
+      state.exotic[i].power    = s.p ? parseInt(s.p) : null;
+      state.exotic[i].enhance1 = s.e1 || '';
+      state.exotic[i].enhance2 = s.e2 || '';
+      state.exotic[i].enhance3 = s.e3 || '';
+    }
+  });
+  renderSEAGrid();
+  renderPriceSheet();
+  populateBulkSelects();
+  // Always persist to disk so navigation never loses the order
+  if (window.electronAPI) window.electronAPI.setPendingOrder(payload);
+  return true;
 }
 
 function adminImportOrder() {
@@ -1917,33 +1956,8 @@ function adminImportOrder() {
   }
   try {
     const payload = JSON.parse(atob(box.value.trim()));
-    if (payload.v !== 1) throw new Error('Unknown version');
-
-    // Load standard SEAs
-    payload.standard.forEach((s, i) => {
-      if (i < state.standard.length) {
-        state.standard[i].power    = s.p ? parseInt(s.p) : null;
-        state.standard[i].type     = s.t || 'Armor';
-        state.standard[i].enhance1 = s.e1 || '';
-        state.standard[i].enhance2 = s.e2 || '';
-        state.standard[i].enhance3 = s.e3 || '';
-      }
-    });
-    // Load exotic SEAs
-    payload.exotic.forEach((s, i) => {
-      if (i < state.exotic.length) {
-        state.exotic[i].power    = s.p ? parseInt(s.p) : null;
-        state.exotic[i].enhance1 = s.e1 || '';
-        state.exotic[i].enhance2 = s.e2 || '';
-        state.exotic[i].enhance3 = s.e3 || '';
-      }
-    });
-
+    if (!applyOrderPayload(payload)) throw new Error('Invalid payload');
     closeAdmin();
-    renderSEAGrid();
-    renderPriceSheet();
-    populateBulkSelects();
-
     const ts = payload.ts ? new Date(payload.ts).toLocaleString() : 'unknown';
     showToast(`Order loaded! Submitted: ${ts}`);
   } catch(e) {
@@ -1961,6 +1975,15 @@ document.getElementById('admin-overlay').addEventListener('click', e => {
 renderSEAGrid();
 renderPriceSheet();
 populateBulkSelects();
+
+// Auto-restore from sessionStorage on page load (web version)
+try {
+  const saved = sessionStorage.getItem('blueshift-order');
+  if (saved) {
+    const payload = JSON.parse(saved);
+    if (payload && payload.v === 1) applyOrderPayload(payload);
+  }
+} catch(e) {}
 </script>
 </body>
 </html>
