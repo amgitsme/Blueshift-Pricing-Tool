@@ -190,16 +190,17 @@
   .sea-bits-display { margin-left:auto;font-size:12px;color:var(--text-dim); }
   .sea-bits-display span { color:var(--gold);font-size:14px; }
 
-  .sea-card-body { padding:9px 10px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px; }
+  .sea-card-body { padding:9px 10px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px; }
   .field-group { display:flex;flex-direction:column;gap:3px; }
   .field-label { font-size:10px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase; }
   .field-select {
     background:var(--bg);border:1px solid var(--border);color:var(--text);
-    font-family:'Share Tech Mono',monospace;font-size:13px;padding:5px 6px;border-radius:2px;
+    font-family:'Share Tech Mono',monospace;font-size:11px;padding:4px 4px;border-radius:2px;
     cursor:pointer;transition:border-color 0.15s,box-shadow 0.15s;width:100%;
     appearance:none;-webkit-appearance:none;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235a8aaa'/%3E%3C/svg%3E");
-    background-repeat:no-repeat;background-position:right 6px center;padding-right:20px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%235a8aaa'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 4px center;padding-right:16px;
+    text-overflow:ellipsis;min-width:0;
   }
   .field-select:focus { outline:none;border-color:var(--accent);box-shadow:var(--glow); }
   .field-select.has-value { border-color:rgba(0,207,255,0.4);color:var(--accent); }
@@ -364,6 +365,7 @@
     background-position: right 6px center;
     margin-bottom: 8px;
     transition: border-color 0.15s;
+    text-overflow:ellipsis;min-width:0;
   }
   .enh-mod-select:focus { outline:none; border-color:var(--accent); box-shadow:var(--glow); }
   .enh-mod-select.has-value { border-color:rgba(0,207,255,0.4); color:var(--accent); }
@@ -561,6 +563,7 @@
     <div class="logo-mark">BLUESHIFT</div>
     <div class="logo-sub">SEA ORDER FORM</div>
   </div>
+  </div>
   <div class="header-divider"></div>
   <div class="header-btns">
     <div class="status-indicator">
@@ -628,11 +631,15 @@
     <!-- POWER BAR -->
     <div class="bulk-bar">
       <div class="bulk-group">
-        <span class="bulk-label">All Power</span>
+        <span class="bulk-label">Power Bit</span>
         <select class="bulk-select" id="bulk-power">
           <option value="">— select —</option>
         </select>
         <button class="bulk-apply" onclick="applyBulkPower()">▶ APPLY ALL</button>
+        <button class="bulk-apply" onclick="applyMax35()"
+          style="background:rgba(255,198,66,0.1);border-color:var(--gold);color:var(--gold);">
+          MAX POWER
+        </button>
         <button class="bulk-clear" onclick="clearBulkPower()" title="Clear power on all SEAs + Exotics">✕</button>
       </div>
     </div>
@@ -642,7 +649,7 @@
       <!-- Slot 1 -->
       <div class="enh-box" id="enh-box-0">
         <div class="enh-box-header">
-          <span class="enh-slot-label">ENHANCE SLOT 1</span>
+          <span class="enh-slot-label">MODIFIER SLOT 1</span>
         </div>
         <div class="enh-box-body">
           <select class="enh-mod-select" id="enh-mod-0" onchange="onEnhModChange(0)">
@@ -664,7 +671,7 @@
       <!-- Slot 2 -->
       <div class="enh-box" id="enh-box-1">
         <div class="enh-box-header">
-          <span class="enh-slot-label">ENHANCE SLOT 2</span>
+          <span class="enh-slot-label">MODIFIER SLOT 2</span>
         </div>
         <div class="enh-box-body">
           <select class="enh-mod-select" id="enh-mod-1" onchange="onEnhModChange(1)">
@@ -686,7 +693,7 @@
       <!-- Slot 3 -->
       <div class="enh-box" id="enh-box-2">
         <div class="enh-box-header">
-          <span class="enh-slot-label">ENHANCE SLOT 3</span>
+          <span class="enh-slot-label">MODIFIER SLOT 3</span>
         </div>
         <div class="enh-box-body">
           <select class="enh-mod-select" id="enh-mod-2" onchange="onEnhModChange(2)">
@@ -1344,15 +1351,15 @@ function renderSEACard(num, idx, group, sdata, fixedType) {
         </select>
       </div>
       <div class="field-group">
-        <div class="field-label">Enhance 1</div>
+        <div class="field-label">Modifier 1</div>
         ${modSelect('enhance1',sdata.enhance1)}
       </div>
       <div class="field-group">
-        <div class="field-label">Enhance 2</div>
+        <div class="field-label">Modifier 2</div>
         ${modSelect('enhance2',sdata.enhance2)}
       </div>
       <div class="field-group">
-        <div class="field-label">Enhance 3</div>
+        <div class="field-label">Modifier 3</div>
         ${modSelect('enhance3',sdata.enhance3)}
       </div>
     </div>
@@ -1881,6 +1888,16 @@ function clearEnhancer(slot) {
   renderSEAGrid();
   renderPriceSheet();
   showToast(`Slot ${slot+1} cleared on ${count} SEA(s).`);
+}
+
+function applyMax35() {
+  state.standard.forEach(s => { s.power = 35; });
+  state.exotic.forEach(s   => { s.power = 35; });
+  const bp = document.getElementById('bulk-power');
+  if (bp) { bp.value = '35'; bp.classList.add('has-value'); }
+  renderSEAGrid();
+  renderPriceSheet();
+  showToast('+35 Power applied to all SEAs & Exotics.');
 }
 
 function applyBulkPower() {
