@@ -1137,7 +1137,7 @@ let state = {
   discount: 'none',
   // 9 standard SEAs — each has a user-selectable type
   standard: Array.from({length:9},(_,i)=>({ power:null, type:'Armor', enhance1:'', enhance2:'', enhance3:'' })),
-  exotic:   EXOTIC_SEAS.map(()=>({ power:null, enhance1:'', enhance2:'', enhance3:'' })),
+  exotic:   EXOTIC_SEAS.map((s,i)=>({ power:null, type:EXOTIC_SEAS[i].type, enhance1:'', enhance2:'', enhance3:'' })),
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1305,7 +1305,7 @@ function renderSEAGrid() {
 function renderSEACard(num, idx, group, sdata, fixedType) {
   const isExotic = group === 'exotic';
   const isConfigured = sdata.power !== null;
-  const currentType = isExotic ? fixedType : sdata.type;
+  const currentType = sdata.type || (isExotic ? fixedType : 'Armor');
   const bits = getBitsNeeded(sdata);
   const badges = seaLootBadges(sdata);
 
@@ -1322,10 +1322,8 @@ function renderSEACard(num, idx, group, sdata, fixedType) {
     </select>`;
   }
 
-  // Type control: pill buttons for standard, badge for exotic
-  const typeControl = isExotic
-    ? `<span class="sea-type-badge">${fixedType.toUpperCase()}</span>`
-    : `<div class="type-pills">
+  // Type control: pill buttons for all SEAs including exotics
+  const typeControl = `<div class="type-pills">
         <button class="type-pill ${currentType==='Armor'   ?'active-armor':''}"
           onclick="setSeaType('${group}',${idx},'Armor')"   >ARMOR</button>
         <button class="type-pill ${currentType==='Weapon'  ?'active-weapon':''}"
@@ -1418,7 +1416,7 @@ function setSeaType(group, idx, type) {
 
 function resetAll() {
   state.standard = Array.from({length:9},()=>({ power:null, type:'Armor', enhance1:'', enhance2:'', enhance3:'' }));
-  state.exotic   = EXOTIC_SEAS.map(()=>({ power:null, enhance1:'', enhance2:'', enhance3:'' }));
+  state.exotic   = EXOTIC_SEAS.map((s,i)=>({ power:null, type:EXOTIC_SEAS[i].type, enhance1:'', enhance2:'', enhance3:'' }));
   state.discount = 'none';
   if (window.electronAPI) window.electronAPI.clearOrder();
   renderSEAGrid();
@@ -1470,7 +1468,7 @@ function updateCopyOutput() {
   const lines = ['═══ RE ORDER SUMMARY ═══'];
   const allSeas = [
     ...state.standard.map((s,i) => ({...s, label:`SEA ${i+1} (${s.type})`})),
-    ...state.exotic.map((s,i)   => ({...s, label:`EXOTIC ${EXOTIC_SEAS[i].num} (${EXOTIC_SEAS[i].type})`})),
+    ...state.exotic.map((s,i)   => ({...s, label:`EXOTIC ${EXOTIC_SEAS[i].num} (${s.type || EXOTIC_SEAS[i].type})`})),
   ].filter(s=>s.power!==null);
 
   if (allSeas.length===0) { document.getElementById('copy-output').value=''; return; }
@@ -1549,7 +1547,7 @@ function buildOrderPayload() {
       e1: s.enhance1||'', e2: s.enhance2||'', e3: s.enhance3||'',
     })),
     exotic: state.exotic.map(s => ({
-      p: s.power,
+      p: s.power, t: s.type,
       e1: s.enhance1||'', e2: s.enhance2||'', e3: s.enhance3||'',
     })),
     disc: state.discount,
@@ -1952,6 +1950,7 @@ function applyOrderPayload(payload) {
   payload.exotic.forEach((s, i) => {
     if (i < state.exotic.length) {
       state.exotic[i].power    = s.p ? parseInt(s.p) : null;
+      state.exotic[i].type     = s.t || EXOTIC_SEAS[i].type;
       state.exotic[i].enhance1 = s.e1 || '';
       state.exotic[i].enhance2 = s.e2 || '';
       state.exotic[i].enhance3 = s.e3 || '';
