@@ -329,6 +329,16 @@
   .toast.show { transform:translateY(0);opacity:1; }
   .toast.error { border-color:var(--red);color:var(--red); }
 
+  /* ── QUICK MODIFIER BUTTONS ── */
+  .qmod-wrap { position:relative; }
+  .qmod-btn { font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:4px 8px;border:1px solid rgba(0,255,157,0.35);background:rgba(0,255,157,0.06);color:var(--accent2);border-radius:2px;cursor:pointer;transition:all 0.12s;white-space:nowrap; }
+  .qmod-btn:hover { background:rgba(0,255,157,0.14);border-color:var(--accent2); }
+  .qmod-dropdown { display:none;position:absolute;top:calc(100% + 3px);left:0;z-index:150;background:var(--panel);border:1px solid var(--border-bright);border-radius:3px;min-width:150px;box-shadow:0 4px 16px rgba(0,0,0,0.6); }
+  .qmod-dropdown.open { display:block; }
+  .qmod-dropdown button { display:block;width:100%;text-align:left;font-family:'Share Tech Mono',monospace;font-size:11px;padding:6px 10px;background:transparent;border:none;color:var(--text);cursor:pointer;transition:background 0.1s;letter-spacing:0.5px; }
+  .qmod-dropdown button:hover { background:rgba(0,207,255,0.1);color:var(--accent); }
+  .qmod-sep { border-top:1px solid var(--border);margin:2px 0; }
+
   @media (max-width:900px) {
     .main-grid { grid-template-columns:1fr;height:auto; }
     .price-panel { border-right:none;border-bottom:1px solid var(--border);max-height:50vh; }
@@ -427,6 +437,79 @@
           <button class="bulk-apply" onclick="applyMax35()" style="background:rgba(255,198,66,0.1);border-color:var(--gold);color:var(--gold);">MAX POWER</button>
           <button class="bulk-clear" onclick="clearBulkPower()" title="Clear power on all SEAs">✕</button>
         </div>
+        <!-- QUICK MODIFIER BUTTONS -->
+        <div class="qmod-wrap">
+          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Defense General ▾</button>
+          <div class="qmod-dropdown">
+            <button onclick="applyQuickMod('Defense General','standard','enhance1')">SEA Slot 1</button>
+            <button onclick="applyQuickMod('Defense General','standard','enhance2')">SEA Slot 2</button>
+            <button onclick="applyQuickMod('Defense General','standard','enhance3')">SEA Slot 3</button>
+            <div class="qmod-sep"></div>
+            <button onclick="applyQuickMod('Defense General','exotic','enhance1')">Exotic Slot 1</button>
+            <button onclick="applyQuickMod('Defense General','exotic','enhance2')">Exotic Slot 2</button>
+            <button onclick="applyQuickMod('Defense General','exotic','enhance3')">Exotic Slot 3</button>
+          </div>
+        </div>
+        <div class="qmod-wrap">
+          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Melee General ▾</button>
+          <div class="qmod-dropdown">
+            <button onclick="applyQuickMod('Melee General','standard','enhance1')">SEA Slot 1</button>
+            <button onclick="applyQuickMod('Melee General','standard','enhance2')">SEA Slot 2</button>
+            <button onclick="applyQuickMod('Melee General','standard','enhance3')">SEA Slot 3</button>
+            <div class="qmod-sep"></div>
+            <button onclick="applyQuickMod('Melee General','exotic','enhance1')">Exotic Slot 1</button>
+            <button onclick="applyQuickMod('Melee General','exotic','enhance2')">Exotic Slot 2</button>
+            <button onclick="applyQuickMod('Melee General','exotic','enhance3')">Exotic Slot 3</button>
+          </div>
+        </div>
+        <div class="qmod-wrap">
+          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Ranged General ▾</button>
+          <div class="qmod-dropdown">
+            <button onclick="applyQuickMod('Ranged General','standard','enhance1')">SEA Slot 1</button>
+            <button onclick="applyQuickMod('Ranged General','standard','enhance2')">SEA Slot 2</button>
+            <button onclick="applyQuickMod('Ranged General','standard','enhance3')">SEA Slot 3</button>
+            <div class="qmod-sep"></div>
+            <button onclick="applyQuickMod('Ranged General','exotic','enhance1')">Exotic Slot 1</button>
+            <button onclick="applyQuickMod('Ranged General','exotic','enhance2')">Exotic Slot 2</button>
+            <button onclick="applyQuickMod('Ranged General','exotic','enhance3')">Exotic Slot 3</button>
+          </div>
+        </div>
+        <div class="qmod-wrap">
+          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Opportune Chance ▾</button>
+          <div class="qmod-dropdown">
+            <button onclick="applyQuickMod('Opportune Chance','standard','enhance1')">SEA Slot 1</button>
+            <button onclick="applyQuickMod('Opportune Chance','standard','enhance2')">SEA Slot 2</button>
+            <button onclick="applyQuickMod('Opportune Chance','standard','enhance3')">SEA Slot 3</button>
+            <div class="qmod-sep"></div>
+            <button onclick="applyQuickMod('Opportune Chance','exotic','enhance1')">Exotic Slot 1</button>
+            <button onclick="applyQuickMod('Opportune Chance','exotic','enhance2')">Exotic Slot 2</button>
+            <button onclick="applyQuickMod('Opportune Chance','exotic','enhance3')">Exotic Slot 3</button>
+          </div>
+        </div>
+        <div class="qmod-wrap">
+          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Toughness ▾</button>
+          <div class="qmod-dropdown">
+            <button onclick="applyQuickMod('Toughness Boost','standard','enhance1')">SEA Slot 1</button>
+            <button onclick="applyQuickMod('Toughness Boost','standard','enhance2')">SEA Slot 2</button>
+            <button onclick="applyQuickMod('Toughness Boost','standard','enhance3')">SEA Slot 3</button>
+            <div class="qmod-sep"></div>
+            <button onclick="applyQuickMod('Toughness Boost','exotic','enhance1')">Exotic Slot 1</button>
+            <button onclick="applyQuickMod('Toughness Boost','exotic','enhance2')">Exotic Slot 2</button>
+            <button onclick="applyQuickMod('Toughness Boost','exotic','enhance3')">Exotic Slot 3</button>
+          </div>
+        </div>
+        <div class="qmod-wrap">
+          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Endurance ▾</button>
+          <div class="qmod-dropdown">
+            <button onclick="applyQuickMod('Endurance Boost','standard','enhance1')">SEA Slot 1</button>
+            <button onclick="applyQuickMod('Endurance Boost','standard','enhance2')">SEA Slot 2</button>
+            <button onclick="applyQuickMod('Endurance Boost','standard','enhance3')">SEA Slot 3</button>
+            <div class="qmod-sep"></div>
+            <button onclick="applyQuickMod('Endurance Boost','exotic','enhance1')">Exotic Slot 1</button>
+            <button onclick="applyQuickMod('Endurance Boost','exotic','enhance2')">Exotic Slot 2</button>
+            <button onclick="applyQuickMod('Endurance Boost','exotic','enhance3')">Exotic Slot 3</button>
+          </div>
+        </div>
       </div>
 
       <!-- ENHANCER PANEL -->
@@ -498,6 +581,9 @@
           <div class="controls-left">
             <button class="btn btn-primary" onclick="copyToClipboard()">⎘ COPY SUMMARY</button>
             <button class="btn btn-danger" onclick="resetAll()">✕ RESET</button>
+            <button class="btn" style="border-color:rgba(0,207,255,0.35);color:var(--accent);" onclick="saveOrderWeb()">⬇ SAVE ORDER</button>
+            <button class="btn" style="border-color:rgba(0,207,255,0.35);color:var(--accent);" onclick="loadOrderWeb()">⬆ LOAD ORDER</button>
+            <input type="file" id="load-order-input" accept=".bsea" style="display:none" onchange="handleLoadOrderFile(event)">
           </div>
           <textarea class="copy-output" id="copy-output" readonly placeholder="Configure SEAs to generate order summary..."></textarea>
         </div>
@@ -1207,6 +1293,113 @@ function copyToClipboard() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// QUICK MODIFIER BUTTONS
+// ═══════════════════════════════════════════════════════════════════
+function applyQuickMod(modValue, group, field) {
+  state[group].forEach(sea => { sea[field] = modValue; });
+  renderSEAGrid();
+  renderPriceSheet();
+  closeAllQmodDropdowns();
+  const slotNum = field.slice(-1);
+  const groupLabel = group === 'standard' ? 'SEAs' : 'Exotics';
+  showToast(`${modValue} → ${groupLabel} Slot ${slotNum}`);
+}
+function toggleQmodDropdown(btn) {
+  const dd = btn.nextElementSibling;
+  const isOpen = dd.classList.contains('open');
+  closeAllQmodDropdowns();
+  if (!isOpen) dd.classList.add('open');
+}
+function closeAllQmodDropdowns() {
+  document.querySelectorAll('.qmod-dropdown').forEach(d => d.classList.remove('open'));
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.qmod-wrap')) closeAllQmodDropdowns();
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// SAVE / LOAD ORDER (.bsea)
+// ═══════════════════════════════════════════════════════════════════
+function buildOrderPayload() {
+  const toRow = sea => ({
+    p:  sea.power,
+    t:  sea.type  || null,
+    e1: sea.enhance1 || null,
+    e2: sea.enhance2 || null,
+    e3: sea.enhance3 || null,
+  });
+  return {
+    v:        1,
+    standard: state.standard.map(toRow),
+    exotic:   state.exotic.map(toRow),
+    disc:     state.discount,
+    ts:       Date.now(),
+  };
+}
+
+function applyOrderPayload(payload) {
+  if (!payload || payload.v !== 1) { showToast('Unrecognised file format.', true); return; }
+  const applyRows = (rows, group) => {
+    rows.forEach((r, i) => {
+      if (!state[group][i]) return;
+      state[group][i].power    = r.p    ?? null;
+      state[group][i].type     = r.t    ?? null;
+      state[group][i].enhance1 = r.e1   ?? null;
+      state[group][i].enhance2 = r.e2   ?? null;
+      state[group][i].enhance3 = r.e3   ?? null;
+    });
+  };
+  applyRows(payload.standard || [], 'standard');
+  applyRows(payload.exotic   || [], 'exotic');
+  renderSEAGrid();
+  if (payload.disc !== undefined) setDiscount(payload.disc);
+  renderPriceSheet();
+}
+
+function saveOrderWeb() {
+  const payload = buildOrderPayload();
+  const json    = JSON.stringify(payload, null, 2);
+  const blob    = new Blob([json], { type: 'application/json' });
+  const url     = URL.createObjectURL(blob);
+  const ts      = new Date().toISOString().slice(0,10);
+  const a       = document.createElement('a');
+  a.href        = url;
+  a.download    = `blueshift-order-${ts}.bsea`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Order saved!');
+}
+
+function loadOrderWeb() {
+  document.getElementById('load-order-input').click();
+}
+
+function handleLoadOrderFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      let payload;
+      const text = e.target.result.trim();
+      // Support both raw JSON and base64
+      if (text.startsWith('{') || text.startsWith('[')) {
+        payload = JSON.parse(text);
+      } else {
+        payload = JSON.parse(atob(text));
+      }
+      applyOrderPayload(payload);
+      showToast('Order loaded!');
+    } catch(err) {
+      showToast('Failed to load file.', true);
+    }
+  };
+  reader.readAsText(file);
+  // Reset input so same file can be re-loaded
+  event.target.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // SUBMIT TO DISCORD
 // ═══════════════════════════════════════════════════════════════════
 async function submitOrder() {
@@ -1233,6 +1426,11 @@ async function submitOrder() {
           title: '📦 New SEA Order',
           description: '```\n' + summary + '\n```',
           color: 0x00cfff,
+          fields: [{
+            name: '📋 Import String',
+            value: '```\n' + btoa(JSON.stringify(buildOrderPayload())) + '\n```',
+            inline: false,
+          }],
           footer: { text: 'Blueshift SEA Order Form' },
           timestamp: new Date().toISOString(),
         }]
