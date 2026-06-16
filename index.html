@@ -1417,20 +1417,22 @@ async function submitOrder() {
   btn.textContent = 'SUBMITTING...';
 
   try {
+    const importStr = btoa(JSON.stringify(buildOrderPayload()));
+    // Discord limits: description ≤4096 chars, content ≤2000 chars
+    const descRaw = '```\n' + summary + '\n```';
+    const desc    = descRaw.length > 4096 ? descRaw.slice(0, 4090) + '…```' : descRaw;
+    // Import string goes in content (top-level message text) to avoid the 1024-char field limit
+    const content = '📋 **Import String:**\n```\n' + importStr + '\n```';
+
     const res = await fetch(DISCORD_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        content: null,
+        content: content,
         embeds: [{
-          title: '📦 New SEA Order',
-          description: '```\n' + summary + '\n```',
+          title: '📦 New SEA Order — ' + ign,
+          description: desc,
           color: 0x00cfff,
-          fields: [{
-            name: '📋 Import String',
-            value: '```\n' + btoa(JSON.stringify(buildOrderPayload())) + '\n```',
-            inline: false,
-          }],
           footer: { text: 'Blueshift SEA Order Form' },
           timestamp: new Date().toISOString(),
         }]
@@ -1445,7 +1447,7 @@ async function submitOrder() {
       throw new Error(`HTTP ${res.status}`);
     }
   } catch(e) {
-    showToast('⚠ Submission failed. Please copy and send manually.', true);
+    showToast('⚠ Submission failed: ' + e.message, true);
     btn.textContent = '▶ SUBMIT ORDER TO BLUESHIFT';
     btn.disabled = false;
   }
