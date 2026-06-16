@@ -147,6 +147,13 @@
     border-radius: 3px;
   }
   .discount-toggle-label { font-size:12px;color:var(--text-dim);letter-spacing:1px;flex:1; }
+
+  /* discount code input */
+  .discount-code-row { display:flex;gap:8px;margin-top:8px;align-items:center; }
+  .discount-code-input { flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:13px;padding:5px 9px;border-radius:2px;letter-spacing:2px;text-transform:uppercase; }
+  .discount-code-input:focus { outline:none;border-color:var(--accent); }
+  .discount-code-msg { font-size:11px;letter-spacing:1px;margin-top:5px;min-height:16px; }
+
   .toggle-btn { padding:3px 10px;font-family:'Share Tech Mono',monospace;font-size:12px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer;border-radius:2px;transition:all 0.15s;letter-spacing:1px; }
   .toggle-btn.active-yes { background:rgba(0,255,157,0.12);border-color:var(--accent2);color:var(--accent2);text-shadow:var(--glow-green); }
   .toggle-btn.active-no  { background:rgba(255,68,85,0.1);border-color:var(--red);color:var(--red); }
@@ -394,6 +401,10 @@
             <span class="total-label" id="lbl-discount-amount">DISCOUNT</span>
             <span class="total-value discount-val" id="val-discount">0</span>
           </div>
+          <div class="total-row" id="row-code-discount" style="display:none">
+            <span class="total-label" id="lbl-code-discount-amount">CODE DISCOUNT</span>
+            <span class="total-value discount-val" id="val-code-discount">0</span>
+          </div>
           <div class="total-row" id="row-grand" style="display:none">
             <span class="total-label">GRAND TOTAL</span>
             <span class="total-value grand" id="val-grand">0</span>
@@ -410,6 +421,13 @@
           <button class="toggle-btn" id="disc-btn-yes" onclick="setDiscount('bcc')">ON</button>
           <button class="toggle-btn active-no" id="disc-btn-no" onclick="setDiscount('none')">OFF</button>
         </div>
+
+        <!-- Discount code input -->
+        <div class="discount-code-row">
+          <input class="discount-code-input" id="discount-code-input" type="text" placeholder="DISCOUNT CODE" autocomplete="off" maxlength="32">
+          <button class="toggle-btn" onclick="applyDiscountCode()">APPLY</button>
+        </div>
+        <div class="discount-code-msg" id="discount-code-msg"></div>
       </div>
 
       <!-- Running Stats -->
@@ -763,6 +781,7 @@ const EXOTIC_SEAS = [
 // ═══════════════════════════════════════════════════════════════════
 let state = {
   discount: 'none',
+  appliedCode: null,      // { code: 'SAVE10', pct: 10 } or null
   standard: Array.from({length:9},()=>({ power:null, type:'Armor', enhance1:'', enhance2:'', enhance3:'' })),
   exotic:   EXOTIC_SEAS.map(es=>({ power:null, type:es.type, enhance1:'', enhance2:'', enhance3:'' })),
 };
@@ -841,24 +860,48 @@ function renderPriceSheet() {
   document.getElementById('items-tbody').innerHTML = rows;
   document.getElementById('val-subtotal').textContent = fmt(subtotal);
 
-  const discRow  = document.getElementById('row-discount');
-  const grandRow = document.getElementById('row-grand');
-  const discLbl  = document.getElementById('lbl-discount-amount');
+  const discRow     = document.getElementById('row-discount');
+  const codeDiscRow = document.getElementById('row-code-discount');
+  const grandRow    = document.getElementById('row-grand');
+  const discLbl     = document.getElementById('lbl-discount-amount');
+  const codeDiscLbl = document.getElementById('lbl-code-discount-amount');
+
+  let totalDiscount = 0;
+
+  // BCC discount
   if (state.discount==='bcc' && subtotal>0) {
     const pct = Math.round(cfg.bccDiscount*100);
     const discAmt = Math.round(subtotal*cfg.bccDiscount);
     if (discLbl) discLbl.textContent = `${cfg.discountLabel} (${pct}% OFF)`;
-    discRow.style.display='flex'; grandRow.style.display='flex';
     document.getElementById('val-discount').textContent = fmt(discAmt);
-    document.getElementById('val-grand').textContent    = fmt(subtotal-discAmt);
+    discRow.style.display='flex';
+    totalDiscount += discAmt;
   } else {
-    discRow.style.display='none'; grandRow.style.display='none';
+    discRow.style.display='none';
+  }
+
+  // Code discount
+  if (state.appliedCode && subtotal>0) {
+    const codeAmt = Math.round(subtotal*(state.appliedCode.pct/100));
+    if (codeDiscLbl) codeDiscLbl.textContent = `${state.appliedCode.code} (${state.appliedCode.pct}% OFF)`;
+    document.getElementById('val-code-discount').textContent = fmt(codeAmt);
+    codeDiscRow.style.display='flex';
+    totalDiscount += codeAmt;
+  } else {
+    codeDiscRow.style.display='none';
+  }
+
+  if (totalDiscount>0 && subtotal>0) {
+    grandRow.style.display='flex';
+    document.getElementById('val-grand').textContent = fmt(subtotal-totalDiscount);
+  } else {
+    grandRow.style.display='none';
   }
 
   const totalSeas = [...state.standard,...state.exotic].filter(s=>s.power!==null).length;
   const avgEl = document.getElementById('val-avg');
   if (totalSeas>0) {
-    const eff = state.discount==='bcc' ? subtotal*(1-cfg.bccDiscount) : subtotal;
+    const eff = subtotal - totalDiscount;
     avgEl.textContent = fmt(Math.round(eff/totalSeas)) + ' / SEA';
     avgEl.style.color = 'var(--accent)';
   } else {
@@ -1007,14 +1050,55 @@ function setDiscount(type) {
   renderPriceSheet();
 }
 
+function applyDiscountCode() {
+  const input   = document.getElementById('discount-code-input');
+  const msg     = document.getElementById('discount-code-msg');
+  const code    = (input.value || '').trim().toUpperCase();
+
+  if (!code) {
+    msg.textContent = 'Please enter a discount code.';
+    msg.style.color = 'var(--red)';
+    return;
+  }
+
+  const codes = (cfg && cfg.discountCodes) ? cfg.discountCodes : {};
+  const match = codes[code];
+
+  if (!match) {
+    msg.textContent = 'Invalid discount code.';
+    msg.style.color = 'var(--red)';
+    state.appliedCode = null;
+    renderPriceSheet();
+    return;
+  }
+
+  if (!match.active) {
+    msg.textContent = 'This discount code is not currently active.';
+    msg.style.color = 'var(--red)';
+    state.appliedCode = null;
+    renderPriceSheet();
+    return;
+  }
+
+  state.appliedCode = { code, pct: match.pct };
+  msg.textContent = `✓ Code "${code}" applied — ${match.pct}% off!`;
+  msg.style.color = 'var(--accent2)';
+  renderPriceSheet();
+}
+
 function resetAll() {
   state.standard = Array.from({length:9},()=>({ power:null, type:'Armor', enhance1:'', enhance2:'', enhance3:'' }));
   state.exotic   = EXOTIC_SEAS.map(es=>({ power:null, type:es.type, enhance1:'', enhance2:'', enhance3:'' }));
-  state.discount = 'none';
+  state.discount    = 'none';
+  state.appliedCode = null;
   const yes = document.getElementById('disc-btn-yes');
   const no  = document.getElementById('disc-btn-no');
   if (yes) yes.className = 'toggle-btn';
   if (no)  no.className  = 'toggle-btn active-no';
+  const codeInput = document.getElementById('discount-code-input');
+  const codeMsg   = document.getElementById('discount-code-msg');
+  if (codeInput) codeInput.value = '';
+  if (codeMsg)   codeMsg.textContent = '';
   renderSEAGrid();
   renderPriceSheet();
   populateBulkSelects();
@@ -1270,11 +1354,18 @@ function buildOrderSummary() {
   const rareTotal = rareItems.reduce((s,i)=>s+i.qty*i.cost,0);
   const sub = rareTotal+bitTotal;
   lines.push(`Subtotal: ${fmt(sub)} cr`);
+  let totalDisc = 0;
   if (state.discount==='bcc') {
     const d = Math.round(sub*cfg.bccDiscount);
     lines.push(`${cfg.discountLabel}: -${fmt(d)} cr`);
-    lines.push(`Grand Total: ${fmt(sub-d)} cr`);
+    totalDisc += d;
   }
+  if (state.appliedCode) {
+    const d = Math.round(sub*(state.appliedCode.pct/100));
+    lines.push(`Discount Code (${state.appliedCode.code} ${state.appliedCode.pct}% OFF): -${fmt(d)} cr`);
+    totalDisc += d;
+  }
+  if (totalDisc>0) lines.push(`Grand Total: ${fmt(sub-totalDisc)} cr`);
   lines.push(`Submitted: ${new Date().toLocaleString()}`);
   return lines.join('\n');
 }
