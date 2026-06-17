@@ -448,6 +448,13 @@
           <button class="bulk-apply" onclick="applyMax35()" style="background:rgba(255,198,66,0.1);border-color:var(--gold);color:var(--gold);">MAX POWER</button>
           <button class="bulk-clear" onclick="clearBulkPower()" title="Clear power on all SEAs">✕</button>
         </div>
+        <!-- LOAD PRESET -->
+        <div class="bulk-group">
+          <span class="bulk-label">Load Preset</span>
+          <select class="bulk-select" id="preset-select" onchange="applyPreset(this.value)" title="Fill all SEAs &amp; Exotics from a preset">
+            <option value="">— select —</option>
+          </select>
+        </div>
         <!-- QUICK MODIFIER BUTTONS -->
         <div class="qmod-wrap">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Defense General ▾</button>
@@ -1393,6 +1400,46 @@ function toggleQmodDropdown(btn) {
 function closeAllQmodDropdowns() {
   document.querySelectorAll('.qmod-dropdown').forEach(d => d.classList.remove('open'));
 }
+
+// ── Load Preset (presets come from the synced Firebase pricing config) ──
+function renderPresetDropdown() {
+  const sel = document.getElementById('preset-select');
+  if (!sel) return;
+  const list = (cfg && Array.isArray(cfg.presets)) ? cfg.presets : [];
+  sel.innerHTML = '<option value="">— select —</option>' +
+    list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  sel.value = '';
+  // Hide the preset picker entirely if no presets are configured
+  const grp = sel.closest('.bulk-group');
+  if (grp) grp.style.display = list.length ? '' : 'none';
+}
+
+function applyPreset(id) {
+  if (!id) return;
+  const p = (cfg && cfg.presets || []).find(x => x.id === id);
+  if (!p) { showToast('Preset not found.'); return; }
+  const pow = (typeof p.power === 'number' && p.power > 0) ? p.power : 35;
+  const std = p.standard || ['', '', ''];
+  state.standard.forEach(s => {
+    s.enhance1 = std[0] || '';
+    s.enhance2 = std[1] || '';
+    s.enhance3 = std[2] || '';
+    if (s.enhance1 || s.enhance2 || s.enhance3) s.power = pow;
+  });
+  const exo = p.exotic || [];
+  state.exotic.forEach((s, idx) => {
+    const tri = exo[idx] || [];
+    s.enhance1 = tri[0] || '';
+    s.enhance2 = tri[1] || '';
+    s.enhance3 = tri[2] || '';
+    if (s.enhance1 || s.enhance2 || s.enhance3) s.power = pow;
+  });
+  renderSEAGrid();
+  renderPriceSheet();
+  const sel = document.getElementById('preset-select');
+  if (sel) sel.value = '';
+  showToast(`Preset applied: ${p.name}`);
+}
 document.addEventListener('click', e => {
   if (!e.target.closest('.qmod-wrap')) closeAllQmodDropdowns();
 });
@@ -1568,6 +1615,7 @@ async function init() {
 
     populateBulkSelects();
     populateEnhancerSelects();
+    renderPresetDropdown();
     renderSEAGrid();
     renderPriceSheet();
 
