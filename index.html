@@ -1444,22 +1444,55 @@ function closeAllQmodDropdowns() {
   document.querySelectorAll('.qmod-dropdown').forEach(d => d.classList.remove('open'));
 }
 
-// ── Load Preset (presets come from the synced Firebase pricing config) ──
+// ── Load Preset ────────────────────────────────────────────────────────
+// Built-in fallback presets so the dropdown is always available on the
+// customer site even before the desktop app has synced any to Firebase.
+// Admin-synced presets (cfg.presets) take precedence when present.
+const DEFAULT_PRESETS = [
+  { id:'standard-core', name:'Standard Core Set', power:35,
+    standard:['Endurance Boost','Ranged General','Melee General'],
+    exotic:[['Endurance Boost','Ranged General','Melee General'],
+            ['Endurance Boost','Ranged General','Melee General'],
+            ['Endurance Boost','Ranged General','Melee General']] },
+  { id:'melee-dps', name:'Melee DPS Set', power:35,
+    standard:['Melee General','Defense General','Opportune Chance'],
+    exotic:[['Melee General','Defense General','Opportune Chance'],
+            ['Melee General','Defense General','Opportune Chance'],
+            ['Melee General','Defense General','Opportune Chance']] },
+  { id:'ranged-dps', name:'Ranged DPS Set', power:35,
+    standard:['Ranged General','Defense General','Opportune Chance'],
+    exotic:[['Ranged General','Defense General','Opportune Chance'],
+            ['Ranged General','Defense General','Opportune Chance'],
+            ['Ranged General','Defense General','Opportune Chance']] },
+  { id:'balanced-tank', name:'Balanced Tank', power:35,
+    standard:['Endurance Boost','Defense General','Opportune Chance'],
+    exotic:[['Endurance Boost','Defense General','Opportune Chance'],
+            ['Endurance Boost','Defense General','Opportune Chance'],
+            ['Endurance Boost','Defense General','Opportune Chance']] },
+  { id:'medic', name:'Medic Set', power:35,
+    standard:['Endurance Boost','Defense General','Opportune Chance'],
+    exotic:[['Healing Potency','Medical Combat Speed','Endurance Boost'],
+            ['Healing Potency','Medical Combat Speed','Opportune Chance'],
+            ['Healing Potency','Medical Combat Speed','Toughness Boost']] },
+];
+function getEffectivePresets() {
+  return (cfg && Array.isArray(cfg.presets) && cfg.presets.length) ? cfg.presets : DEFAULT_PRESETS;
+}
 function renderPresetDropdown() {
   const sel = document.getElementById('preset-select');
   if (!sel) return;
-  const list = (cfg && Array.isArray(cfg.presets)) ? cfg.presets : [];
+  const list = getEffectivePresets();
   sel.innerHTML = '<option value="">— select —</option>' +
     list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
   sel.value = '';
-  // Hide only the preset picker group if no presets are configured (never the advisor)
+  // Always visible (built-in fallback guarantees at least the default presets)
   const grp = document.getElementById('preset-group');
   if (grp) grp.style.display = list.length ? '' : 'none';
 }
 
 function applyPreset(id) {
   if (!id) return;
-  const p = (cfg && cfg.presets || []).find(x => x.id === id);
+  const p = getEffectivePresets().find(x => x.id === id);
   if (!p) { showToast('Preset not found.'); return; }
   const pow = (typeof p.power === 'number' && p.power > 0) ? p.power : 35;
   const std = p.standard || ['', '', ''];
