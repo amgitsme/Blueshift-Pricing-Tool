@@ -454,6 +454,7 @@
           <select class="bulk-select" id="preset-select" onchange="applyPreset(this.value)" title="Fill all SEAs &amp; Exotics from a preset">
             <option value="">— select —</option>
           </select>
+          <button class="bulk-apply" onclick="openAdvisor()" title="Recommend stats from your professions" style="background:rgba(176,106,255,0.12);border-color:var(--admin,#b06aff);color:var(--admin,#b06aff);">🧭 Build Advisor</button>
         </div>
         <!-- QUICK MODIFIER BUTTONS -->
         <div class="qmod-wrap">
@@ -611,6 +612,44 @@
   </div>
 </div>
 
+<!-- BUILD ADVISOR MODAL -->
+<style>
+.advisor-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:300; align-items:center; justify-content:center; }
+.advisor-overlay.open { display:flex; }
+.advisor-modal { background:var(--panel,#0d1520); border:1px solid var(--border-bright,#1e3a52); border-radius:4px; width:min(680px,94vw); max-height:88vh; overflow:auto; }
+.advisor-head { display:flex; justify-content:space-between; align-items:center; padding:13px 16px; border-bottom:1px solid var(--border); }
+.advisor-title { font-family:'Orbitron',sans-serif; letter-spacing:2px; color:var(--accent); }
+.advisor-body { padding:16px; }
+.advisor-cat { margin-bottom:12px; }
+.advisor-cat-label { font-family:'Share Tech Mono',monospace; font-size:11px; letter-spacing:2px; color:var(--text-dim); text-transform:uppercase; margin-bottom:6px; }
+.advisor-profs { display:flex; flex-wrap:wrap; gap:6px; }
+.advisor-prof { font-family:'Share Tech Mono',monospace; font-size:11px; padding:5px 10px; border:1px solid var(--border); border-radius:2px; background:transparent; color:var(--text); cursor:pointer; transition:all 0.12s; }
+.advisor-prof.sel { border-color:var(--accent2); background:rgba(0,255,157,0.14); color:var(--accent2); }
+.advisor-prof:hover { border-color:var(--accent2); }
+.advisor-preview { margin-top:14px; border-top:1px solid var(--border); padding-top:12px; min-height:40px; }
+.advisor-foot { display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid var(--border); }
+.advisor-x { background:none; border:1px solid var(--border); color:var(--text-dim); font-family:'Share Tech Mono',monospace; font-size:11px; padding:4px 10px; border-radius:2px; cursor:pointer; }
+.advisor-btn { font-family:'Orbitron',sans-serif; font-size:11px; letter-spacing:1px; padding:8px 16px; border-radius:2px; cursor:pointer; text-transform:uppercase; border:1px solid var(--border); background:transparent; color:var(--text-dim); }
+.advisor-btn.go { border-color:var(--accent); color:var(--accent); background:rgba(0,207,255,0.12); }
+</style>
+<div class="advisor-overlay" id="advisor-overlay">
+  <div class="advisor-modal">
+    <div class="advisor-head">
+      <div class="advisor-title">🧭 BUILD ADVISOR</div>
+      <button class="advisor-x" onclick="closeAdvisor()">✕ CLOSE</button>
+    </div>
+    <div class="advisor-body">
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Select your combat professions — we'll recommend an optimal SEA &amp; exotic stat layout, then apply it to the grid.</div>
+      <div id="advisor-profs"></div>
+      <div class="advisor-preview" id="advisor-preview"></div>
+    </div>
+    <div class="advisor-foot">
+      <button class="advisor-btn" onclick="closeAdvisor()">Cancel</button>
+      <button class="advisor-btn go" onclick="applyAdvisor()">▶ APPLY TO BUILD</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -668,7 +707,7 @@ const MODIFIERS = [
   'Two-Handed Melee Accuracy','Two-Handed Melee Action Cost',
   'Two-Handed Melee Critical Chance','Two-Handed Melee Damage',
   'Unarmed Accuracy','Unarmed Action Cost','Unarmed Critical Chance',
-  'Unarmed Damage','Unarmed Speed','Weapon Assembly'
+  'Unarmed Damage','Unarmed Speed','Weapon Assembly','Weapon Experimentation'
 ];
 
 const NEEDS_GACKLE = new Set(['Heal Cost Reduction*']);
@@ -1439,6 +1478,154 @@ function applyPreset(id) {
   const sel = document.getElementById('preset-select');
   if (sel) sel.value = '';
   showToast(`Preset applied: ${p.name}`);
+}
+
+// ── Build Advisor (hard-coded recommendation engine) ───────────────────
+const ADVISOR_PROFESSIONS = [
+  { id:'commando',         name:'Commando',          category:'ranged' },
+  { id:'rifleman',         name:'Rifleman',          category:'ranged' },
+  { id:'carbineer',        name:'Carbineer',         category:'ranged' },
+  { id:'pistoleer',        name:'Pistoleer',         category:'ranged' },
+  { id:'bounty-hunter',    name:'Bounty Hunter',     category:'ranged' },
+  { id:'swordsman',        name:'Swordsman',         category:'melee' },
+  { id:'pikeman',          name:'Pikeman',           category:'melee' },
+  { id:'fencer',           name:'Fencer',            category:'melee' },
+  { id:'tka',              name:'Teras Kasi Artist', category:'melee' },
+  { id:'doctor',           name:'Doctor',            category:'healing' },
+  { id:'combat-medic',     name:'Combat Medic',      category:'healing' },
+  { id:'jedi',             name:'Jedi',              category:'jedi' },
+  { id:'smuggler',         name:'Smuggler',          category:'support' },
+  { id:'squad-leader',     name:'Squad Leader',      category:'support' },
+  { id:'ranger',           name:'Ranger',            category:'support' },
+  { id:'creature-handler', name:'Creature Handler',  category:'support' },
+  { id:'armorsmith',       name:'Armorsmith',        category:'crafting' },
+  { id:'weaponsmith',      name:'Weaponsmith',       category:'crafting' },
+  { id:'chef',             name:'Chef',              category:'crafting' },
+  { id:'droid-engineer',   name:'Droid Engineer',    category:'crafting' },
+  { id:'bio-engineer',     name:'Bio-Engineer',      category:'crafting' },
+];
+const ADVISOR_CATEGORIES = [
+  ['ranged','Ranged Combat'], ['melee','Melee Combat'], ['healing','Healing'],
+  ['jedi','Force User'], ['support','Support'], ['crafting','Crafting'],
+];
+// Crafter experimentation per profession (first selected crafter wins if multiple).
+// Bio-Engineer has no dedicated experimentation SEA — using Medical as the closest.
+const ADVISOR_CRAFT_EXP_BY_PROF = {
+  'armorsmith':     'Armor Experimentation',
+  'weaponsmith':    'Weapon Experimentation',
+  'chef':           'Food Experimentation',
+  'droid-engineer': 'Droid Experimentation',
+  'bio-engineer':   'Medical Experimentation',
+};
+const ADVISOR_CRAFT_EXP_FALLBACK = 'Artisan Experimentation';
+let advisorSel = new Set();
+
+function adviseBuild(ids) {
+  const sel = ADVISOR_PROFESSIONS.filter(p => ids.includes(p.id));
+  const f = {
+    ranged:   sel.some(p => p.category === 'ranged'),
+    melee:    sel.some(p => p.category === 'melee' || p.category === 'jedi'),
+    jedi:     sel.some(p => p.category === 'jedi'),
+    healing:  sel.some(p => p.category === 'healing'),
+    crafting: sel.some(p => p.category === 'crafting'),
+  };
+  let core;
+  if (f.ranged && f.melee)   core = ['Ranged General','Melee General','Defense General'];
+  else if (f.ranged)         core = ['Ranged General','Defense General','Opportune Chance'];
+  else if (f.melee || f.jedi)core = ['Melee General','Defense General','Opportune Chance'];
+  else if (f.healing)        core = ['Endurance Boost','Toughness Boost','Defense General'];
+  else if (f.crafting)       core = ['Endurance Boost','Toughness Boost','Defense General'];
+  else                       core = ['Defense General','Endurance Boost','Toughness Boost'];
+
+  let shirt, weapon, chest;
+  if (f.healing) {
+    chest  = ['Healing Potency','Medical Combat Speed','Endurance Boost'];
+    shirt  = ['Healing Potency','Medical Combat Speed','Toughness Boost'];
+    weapon = ['Healing Potency','Medical Combat Speed','Opportune Chance'];
+  } else if (f.crafting) {
+    const craftProf = sel.find(p => p.category === 'crafting');
+    const exp = (craftProf && ADVISOR_CRAFT_EXP_BY_PROF[craftProf.id]) || ADVISOR_CRAFT_EXP_FALLBACK;
+    chest  = [exp,'Endurance Boost','Toughness Boost'];
+    shirt  = [exp,'Endurance Boost','Toughness Boost'];
+    weapon = ['Surveying',exp,'Opportune Chance']; // Luck → Opportune Chance
+  } else {
+    const P = f.ranged ? 'Ranged General' : 'Melee General';
+    chest  = [P,'Toughness Boost','Endurance Boost'];
+    shirt  = [P,'Toughness Boost','Endurance Boost'];
+    weapon = [P,'Opportune Chance','Toughness Boost'];
+  }
+  const tags = [];
+  if (f.ranged) tags.push('Ranged');
+  if (f.melee)  tags.push('Melee');
+  if (f.jedi)   tags.push('Jedi');
+  if (f.healing)tags.push('Healer');
+  if (f.crafting)tags.push('Crafter');
+  return { standard: core, exotic: [shirt, weapon, chest],
+           description: tags.length ? tags.join('/') + ' Build' : 'Balanced Build' };
+}
+
+function openAdvisor() {
+  renderAdvisorProfs();
+  renderAdvisorPreview();
+  document.getElementById('advisor-overlay').classList.add('open');
+}
+function closeAdvisor() {
+  document.getElementById('advisor-overlay').classList.remove('open');
+}
+function toggleAdvisorProf(id) {
+  if (advisorSel.has(id)) advisorSel.delete(id); else advisorSel.add(id);
+  renderAdvisorProfs();
+  renderAdvisorPreview();
+}
+function renderAdvisorProfs() {
+  const wrap = document.getElementById('advisor-profs');
+  if (!wrap) return;
+  wrap.innerHTML = ADVISOR_CATEGORIES.map(([cat, label]) => {
+    const profs = ADVISOR_PROFESSIONS.filter(p => p.category === cat);
+    return `<div class="advisor-cat">
+      <div class="advisor-cat-label">${label}</div>
+      <div class="advisor-profs">
+        ${profs.map(p => `<button class="advisor-prof ${advisorSel.has(p.id)?'sel':''}" onclick="toggleAdvisorProf('${p.id}')">${p.name}</button>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+function renderAdvisorPreview() {
+  const box = document.getElementById('advisor-preview');
+  if (!box) return;
+  if (advisorSel.size === 0) {
+    box.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Select at least one profession to see recommended stats.</div>';
+    return;
+  }
+  const rec = adviseBuild([...advisorSel]);
+  const EXO = ['Clothing / Shirt', 'Weapon', 'Armor'];
+  const triple = t => t.filter(Boolean).join(', ') || '—';
+  box.innerHTML = `
+    <div style="font-family:'Orbitron',sans-serif;letter-spacing:1px;color:var(--accent2);margin-bottom:8px;">${rec.description}</div>
+    <div style="font-size:12px;line-height:1.7;">
+      <div><strong style="color:var(--accent);">Standard SEAs ×9:</strong> ${triple(rec.standard)}</div>
+      ${rec.exotic.map((tri,i) => `<div><strong style="color:var(--accent3);">${EXO[i]}:</strong> ${triple(tri)}</div>`).join('')}
+    </div>`;
+}
+function applyAdvisor() {
+  if (advisorSel.size === 0) { showToast('Select at least one profession first.'); return; }
+  const rec = adviseBuild([...advisorSel]);
+  const pow = 35;
+  const std = rec.standard;
+  state.standard.forEach(s => {
+    s.enhance1 = std[0] || ''; s.enhance2 = std[1] || ''; s.enhance3 = std[2] || '';
+    if (s.enhance1 || s.enhance2 || s.enhance3) s.power = pow;
+  });
+  rec.exotic.forEach((tri, idx) => {
+    const s = state.exotic[idx];
+    if (!s) return;
+    s.enhance1 = tri[0] || ''; s.enhance2 = tri[1] || ''; s.enhance3 = tri[2] || '';
+    if (s.enhance1 || s.enhance2 || s.enhance3) s.power = pow;
+  });
+  renderSEAGrid();
+  renderPriceSheet();
+  closeAdvisor();
+  showToast('Build Advisor applied: ' + rec.description);
 }
 document.addEventListener('click', e => {
   if (!e.target.closest('.qmod-wrap')) closeAllQmodDropdowns();
