@@ -449,11 +449,14 @@
           <button class="bulk-clear" onclick="clearBulkPower()" title="Clear power on all SEAs">✕</button>
         </div>
         <!-- LOAD PRESET -->
-        <div class="bulk-group">
+        <div class="bulk-group" id="preset-group">
           <span class="bulk-label">Load Preset</span>
           <select class="bulk-select" id="preset-select" onchange="applyPreset(this.value)" title="Fill all SEAs &amp; Exotics from a preset">
             <option value="">— select —</option>
           </select>
+        </div>
+        <!-- BUILD ADVISOR -->
+        <div class="bulk-group">
           <button class="bulk-apply" onclick="openAdvisor()" title="Recommend stats from your professions" style="background:rgba(176,106,255,0.12);border-color:var(--admin,#b06aff);color:var(--admin,#b06aff);">🧭 Build Advisor</button>
         </div>
         <!-- QUICK MODIFIER BUTTONS -->
@@ -1448,8 +1451,8 @@ function renderPresetDropdown() {
   sel.innerHTML = '<option value="">— select —</option>' +
     list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
   sel.value = '';
-  // Hide the preset picker entirely if no presets are configured
-  const grp = sel.closest('.bulk-group');
+  // Hide only the preset picker group if no presets are configured (never the advisor)
+  const grp = document.getElementById('preset-group');
   if (grp) grp.style.display = list.length ? '' : 'none';
 }
 
