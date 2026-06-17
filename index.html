@@ -337,7 +337,8 @@
   .toast.error { border-color:var(--red);color:var(--red); }
 
   /* ── QUICK MODIFIER BUTTONS ── */
-  .qmod-wrap { position:relative; }
+  /* Quick-modifier buttons hidden on the customer-facing site (markup & logic kept intact) */
+  .qmod-wrap { position:relative; display:none; }
   .qmod-btn { font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:4px 8px;border:1px solid rgba(0,255,157,0.35);background:rgba(0,255,157,0.06);color:var(--accent2);border-radius:2px;cursor:pointer;transition:all 0.12s;white-space:nowrap; }
   .qmod-btn:hover { background:rgba(0,255,157,0.14);border-color:var(--accent2); }
   .qmod-dropdown { display:none;position:absolute;top:calc(100% + 3px);left:0;z-index:150;background:var(--panel);border:1px solid var(--border-bright);border-radius:3px;min-width:150px;box-shadow:0 4px 16px rgba(0,0,0,0.6); }
