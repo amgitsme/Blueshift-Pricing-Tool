@@ -415,13 +415,6 @@
           <span id="val-avg">—</span>
         </div>
 
-        <!-- Discount toggle — only shown if admin has it enabled -->
-        <div class="discount-toggle-row" id="discount-toggle-row" style="display:none">
-          <span class="discount-toggle-label" id="discount-toggle-label">DISCOUNT</span>
-          <button class="toggle-btn" id="disc-btn-yes" onclick="setDiscount('bcc')">ON</button>
-          <button class="toggle-btn active-no" id="disc-btn-no" onclick="setDiscount('none')">OFF</button>
-        </div>
-
         <!-- Discount code input -->
         <div class="discount-code-row">
           <input class="discount-code-input" id="discount-code-input" type="text" placeholder="DISCOUNT CODE" autocomplete="off" maxlength="32">
@@ -1089,12 +1082,8 @@ function applyDiscountCode() {
 function resetAll() {
   state.standard = Array.from({length:9},()=>({ power:null, type:'Armor', enhance1:'', enhance2:'', enhance3:'' }));
   state.exotic   = EXOTIC_SEAS.map(es=>({ power:null, type:es.type, enhance1:'', enhance2:'', enhance3:'' }));
-  state.discount    = 'none';
+  state.discount    = (cfg && cfg.discountEnabled && cfg.bccDiscount > 0) ? 'bcc' : 'none';
   state.appliedCode = null;
-  const yes = document.getElementById('disc-btn-yes');
-  const no  = document.getElementById('disc-btn-no');
-  if (yes) yes.className = 'toggle-btn';
-  if (no)  no.className  = 'toggle-btn active-no';
   const codeInput = document.getElementById('discount-code-input');
   const codeMsg   = document.getElementById('discount-code-msg');
   if (codeInput) codeInput.value = '';
@@ -1567,13 +1556,9 @@ async function init() {
     cfg = data;
 
     // Show/hide discount toggle based on admin setting
-    const discRow = document.getElementById('discount-toggle-row');
-    const discLabel = document.getElementById('discount-toggle-label');
+    // Auto-apply BCC discount if admin has enabled it
     if (cfg.discountEnabled && cfg.bccDiscount > 0) {
-      discRow.style.display = 'flex';
-      if (discLabel) discLabel.textContent = `${cfg.discountLabel || 'Discount'} (${Math.round(cfg.bccDiscount*100)}% OFF)`;
-    } else {
-      discRow.style.display = 'none';
+      state.discount = 'bcc';
     }
 
     // Boot
