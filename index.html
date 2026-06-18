@@ -641,7 +641,10 @@
   <div class="advisor-modal">
     <div class="advisor-head">
       <div class="advisor-title">🧭 LOADOUT ADVISOR</div>
-      <button class="advisor-x" onclick="closeAdvisor()">✕ CLOSE</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-danger" style="padding:4px 10px;font-size:11px;" onclick="resetAdvisor()">↺ RESET</button>
+        <button class="advisor-x" onclick="closeAdvisor()">✕ CLOSE</button>
+      </div>
     </div>
     <div class="advisor-body">
       <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Select your combat professions. Recommendations will be made for SEA and exotic layouts.</div>
@@ -650,13 +653,14 @@
     </div>
     <div class="advisor-foot">
       <button class="advisor-btn" onclick="closeAdvisor()">Cancel</button>
-      <button class="advisor-btn go" onclick="applyAdvisor()">▶ APPLY TO BUILD</button>
+      <button class="advisor-btn go" id="advisor-apply" onclick="applyAdvisor()">▶ APPLY TO BUILD</button>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
+<script src="skill_points.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════════
 // CONFIG — loaded from Firebase
@@ -1567,6 +1571,41 @@ let advisorSel = new Set();
 const ADVISOR_STAT_PRIORITY = ['Ranged General','Melee General','Defense General','Opportune Chance','Toughness Boost','Endurance Boost'];
 function advisorGroups(){ const g=[]; ADVISOR_PROFS.forEach(p=>{ if(!g.includes(p.grp)) g.push(p.grp); }); return g; }
 function advisorSelected(){ return ADVISOR_PROFS.filter(p => advisorSel.has(p.id)); }
+function advisorSkillInfo(){
+  if (typeof window.skillComboCost !== 'function') return null;
+  const sel = advisorSelected();
+  const hasJedi = sel.some(p => p.grp === 'Force User');
+  const checkable = sel.map(p => p.id).filter(id => window.skillHasProf(id));
+  const cap = window.SKILL_CAP || 250;
+  const pts = window.skillComboCost(checkable);
+  return { pts, cap, over: pts > cap, hasJedi, anyCheckable: checkable.length > 0 };
+}
+function advisorSkillReadoutHTML(){
+  const info = advisorSkillInfo();
+  if (!info || !info.anyCheckable) {
+    if (info && info.hasJedi) return `<div style="border:1px solid var(--border);border-radius:6px;padding:7px 10px;margin-bottom:10px;font-size:11px;color:var(--text-dim);">Jedi / Force builds unlock through the Force system and aren't counted against the 250 skill-point cap.</div>`;
+    return '';
+  }
+  const c = info.over ? '#ff5252' : 'var(--accent2)';
+  let msg = info.over
+    ? `Not achievable on one character — exceeds the ${info.cap} skill-point cap. Deselect a profession.`
+    : `Achievable on a single character.`;
+  if (info.hasJedi) msg += ' Jedi/Force builds are not counted toward the cap.';
+  return `<div style="border:1px solid ${c};border-radius:6px;padding:7px 10px;margin-bottom:10px;background:rgba(0,0,0,0.25);">
+    <div style="font-family:'Orbitron',sans-serif;letter-spacing:1px;color:${c};font-size:12px;">${info.over?'⚠ ':'✓ '}SKILL POINTS: ${info.pts} / ${info.cap}</div>
+    <div style="font-size:11px;color:${info.over?'#ff8a80':'var(--text-dim)'};margin-top:2px;">${msg}</div>
+  </div>`;
+}
+function updateAdvisorApplyState(){
+  const btn = document.getElementById('advisor-apply');
+  if (!btn) return;
+  const info = advisorSkillInfo();
+  const over = !!(info && info.over);
+  btn.disabled = over;
+  btn.style.opacity = over ? '0.45' : '';
+  btn.style.pointerEvents = over ? 'none' : '';
+  btn.title = over ? 'This combination exceeds the 250 skill-point cap' : '';
+}
 function advisorDedupe(arr){
   const s=[]; arr.forEach(m=>{ if(m && !s.includes(m)) s.push(m); });
   return s.sort((a,b)=>{ const ia=ADVISOR_STAT_PRIORITY.indexOf(a), ib=ADVISOR_STAT_PRIORITY.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
@@ -1582,11 +1621,42 @@ function openAdvisor() {
   renderAdvisorPreview();
   document.getElementById('advisor-overlay').classList.add('open');
 }
+function resetAdvisor() {
+  advisorSel.clear();
+  renderAdvisorProfs();
+  renderAdvisorPreview();
+  updateAdvisorApplyState();
+}
 function closeAdvisor() {
   document.getElementById('advisor-overlay').classList.remove('open');
 }
 function toggleAdvisorProf(id) {
-  if (advisorSel.has(id)) advisorSel.delete(id); else advisorSel.add(id);
+  const prof = ADVISOR_PROFS.find(p => p.id === id);
+  const isJedi = prof && prof.grp === 'Force User';
+  if (advisorSel.has(id)) {
+    advisorSel.delete(id);
+  } else if (isJedi) {
+    // Force User builds are exclusive: only one, and never combined with other professions
+    advisorSel.clear();
+    advisorSel.add(id);
+  } else {
+    // can't add a regular profession while a Force User build is selected
+    if (advisorSelected().some(p => p.grp === 'Force User')) {
+      showToast('A Force User (Jedi) build can\'t be combined with other professions. Deselect the Jedi first.');
+      return;
+    }
+    // block any selection that would exceed the 250 skill-point cap
+    if (typeof window.skillComboCost === 'function' && window.skillHasProf(id)) {
+      const cap = window.SKILL_CAP || 250;
+      const current = advisorSelected().map(p => p.id).filter(x => window.skillHasProf(x));
+      const projected = window.skillComboCost(current.concat(id));
+      if (projected > cap) {
+        showToast(prof.name + ' would exceed the ' + cap + '-point cap (' + projected + '/' + cap + '). Deselect another profession first.');
+        return;
+      }
+    }
+    advisorSel.add(id);
+  }
   renderAdvisorProfs();
   renderAdvisorPreview();
 }
@@ -1610,11 +1680,12 @@ function renderAdvisorPreview() {
   const sel = advisorSelected();
   if (sel.length === 0) {
     box.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Select one or more professions (you can combine, e.g. Fencer + Combat Medic) to see the meta SEA / exotic loadout.</div>';
+    updateAdvisorApplyState();
     return;
   }
   const { reg, exo } = advisorCombined();
   const seaSel = sel.filter(p => p.sea);
-  let html = '';
+  let html = advisorSkillReadoutHTML();
   if (seaSel.length) {
     html += `<div style="font-family:'Orbitron',sans-serif;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">Combined loadout — ${seaSel.map(p=>p.name).join(' + ')}</div>
       <div style="font-size:12px;line-height:1.7;margin-bottom:6px;">
@@ -1638,8 +1709,11 @@ function renderAdvisorPreview() {
     </div>`;
   }).join('');
   box.innerHTML = html;
+  updateAdvisorApplyState();
 }
 function applyAdvisor() {
+  const info = advisorSkillInfo();
+  if (info && info.over) { showToast('This combination exceeds the 250 skill-point cap and is not achievable on one character. Deselect a profession.'); return; }
   const { reg, exo, sel } = advisorCombined();
   if (sel.length === 0) { showToast('Select at least one SEA profession first.'); return; }
   const pow = 35;
