@@ -684,7 +684,7 @@ const MODIFIERS = [
   'Droid Speed','Elemental Penetration: Acid','Elemental Penetration: Cold',
   'Elemental Penetration: Electricity','Elemental Penetration: Heat',
   'Endurance Boost','Evasion Chance','Evasion Value','Fast Draw Critical Chance',
-  'Fervent Mutation','Fire Absorption','Fire Resistance','Focused Enzyme Manipulation*',
+  'Fervent Mutation*','Fire Absorption','Fire Resistance','Focused Enzyme Manipulation*',
   'Focused Fire Critical Chance','Food Assembly','Food Experimentation',
   'Force Accuracy','Force Heal Cost Reduction','Force Power Max',
   'Force Powers Cost Reduction','Force Powers Critical Chance',
@@ -954,6 +954,11 @@ function renderPriceSheet() {
 
   updateCopyOutput();
   renderRunningStats();
+  persistOrder();
+}
+// Persist the full SEA configuration so it survives page navigation (cleared only on Reset).
+function persistOrder(){
+  try { localStorage.setItem('blueshift-order-state', JSON.stringify({ standard: state.standard, exotic: state.exotic })); } catch(e) {}
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -975,7 +980,15 @@ function seaLootBadges(sdata) {
   return h;
 }
 
+// No SEA may carry the same modifier twice — clear any later slot that duplicates an earlier one.
+function dedupeAllSeas(){
+  [...state.standard, ...state.exotic].forEach(s => {
+    if (s.enhance2 && s.enhance2 === s.enhance1) s.enhance2 = '';
+    if (s.enhance3 && (s.enhance3 === s.enhance1 || s.enhance3 === s.enhance2)) s.enhance3 = '';
+  });
+}
 function renderSEAGrid() {
+  dedupeAllSeas();
   const grid = document.getElementById('sea-grid');
   let html = '';
   state.standard.forEach((sdata,i) => { html += renderSEACard(i+1,i,'standard',sdata); });
@@ -1000,11 +1013,14 @@ function renderSEACard(num, idx, group, sdata, fixedType) {
   ).join('');
 
   function modSelect(field, val) {
+    // no duplicate modifiers within one SEA: exclude mods chosen in this SEA's other slots
+    const taken = ['enhance1','enhance2','enhance3'].filter(f => f !== field).map(f => sdata[f]).filter(Boolean);
+    const modList = MODIFIERS.filter(m => m === val || !taken.includes(m));
     const lc = val&&(NEEDS_GACKLE.has(val)||NEEDS_CAP.has(val)) ? ' needs-loot' : '';
     return `<select class="field-select ${val?'has-value':''}${lc}"
       data-group="${group}" data-idx="${idx}" data-field="${field}" onchange="updateSEA(this)">
       <option value="">— none —</option>
-      ${MODIFIERS.map(m=>`<option value="${m}" ${val===m?'selected':''}>${m}${lootTag(m)}</option>`).join('')}
+      ${modList.map(m=>`<option value="${m}" ${val===m?'selected':''}>${m}${lootTag(m)}</option>`).join('')}
     </select>`;
   }
 
@@ -1071,6 +1087,8 @@ function updateSEA(el) {
   if (field==='power') {
     const sel = card.querySelector(`[data-field="power"]`);
     if (sel) sel.classList.toggle('has-value', !!val);
+  } else {
+    renderSEAGrid(); // refresh sibling modifier dropdowns so duplicates are excluded
   }
   renderPriceSheet();
 }
@@ -1083,6 +1101,7 @@ function setSeaType(group, idx, type) {
     const t = btn.textContent.trim();
     if (t===type.toUpperCase()) btn.classList.add(`active-${type.toLowerCase()}`);
   });
+  persistOrder();
 }
 
 function setDiscount(type) {
@@ -1541,90 +1560,23 @@ function applyPreset(id) {
 }
 
 // ── Build Advisor (hard-coded recommendation engine) ───────────────────
-const ADVISOR_PROFESSIONS = [
-  { id:'commando',         name:'Commando',          category:'ranged' },
-  { id:'rifleman',         name:'Rifleman',          category:'ranged' },
-  { id:'carbineer',        name:'Carbineer',         category:'ranged' },
-  { id:'pistoleer',        name:'Pistoleer',         category:'ranged' },
-  { id:'bounty-hunter',    name:'Bounty Hunter',     category:'ranged' },
-  { id:'swordsman',        name:'Swordsman',         category:'melee' },
-  { id:'pikeman',          name:'Pikeman',           category:'melee' },
-  { id:'fencer',           name:'Fencer',            category:'melee' },
-  { id:'tka',              name:'Teras Kasi Artist', category:'melee' },
-  { id:'doctor',           name:'Doctor',            category:'healing' },
-  { id:'combat-medic',     name:'Combat Medic',      category:'healing' },
-  { id:'jedi-melee',       name:'Jedi (Melee)',      category:'jedi', combat:'melee' },
-  { id:'jedi-ranged',      name:'Jedi (Ranged)',     category:'jedi', combat:'ranged' },
-  { id:'smuggler',         name:'Smuggler',          category:'support' },
-  { id:'squad-leader',     name:'Squad Leader',      category:'support' },
-  { id:'ranger',           name:'Ranger',            category:'support' },
-  { id:'creature-handler', name:'Creature Handler',  category:'support' },
-  { id:'armorsmith',       name:'Armorsmith',        category:'crafting' },
-  { id:'weaponsmith',      name:'Weaponsmith',       category:'crafting' },
-  { id:'chef',             name:'Chef',              category:'crafting' },
-  { id:'droid-engineer',   name:'Droid Engineer',    category:'crafting' },
-  { id:'bio-engineer',     name:'Bio-Engineer',      category:'crafting' },
-];
-const ADVISOR_CATEGORIES = [
-  ['ranged','Ranged Combat'], ['melee','Melee Combat'], ['healing','Healing'],
-  ['jedi','Force User'], ['support','Support'], ['crafting','Crafting'],
-];
-// Crafter experimentation per profession (first selected crafter wins if multiple).
-// Bio-Engineer has no dedicated experimentation SEA — using Medical as the closest.
-const ADVISOR_CRAFT_EXP_BY_PROF = {
-  'armorsmith':     'Armor Experimentation',
-  'weaponsmith':    'Weapon Experimentation',
-  'chef':           'Food Experimentation',
-  'droid-engineer': 'Droid Experimentation',
-  'bio-engineer':   'Medical Experimentation',
-};
-const ADVISOR_CRAFT_EXP_FALLBACK = 'Artisan Experimentation';
+// Dataset-driven advisor — compiled from the SWG Restoration wiki (swgr_meta_builds.json).
+// Each applied modifier is validated against the SEA tool's MODIFIERS list.
+const ADVISOR_PROFS = [{"id":"bounty-hunter","name":"Bounty Hunter","grp":"Hybrid / Support","sea":true,"regular":["Ranged General","Defense General","Opportune Chance"],"exotics":[],"g":{"role":"Ranged debuff/versatility + bounty hunting (PvP/PvE)","armor":"Assault","weapons":"Any ranged weapon (rifle/carbine/pistol) - all BH abilities work with any ranged weapon","exoticSeas":"[Chosen ranged weapon] Accuracy ~17 / [Chosen weapon] Speed ~17 / [Chosen weapon] Action Cost ~3","bangle":"[Chosen weapon] Defense 35 (or General Ranged-supporting exotic)","profExotics":"Droid Speed (exotic) - faster bounty 'Find'; Tracking Droids (exotic)","jewelry":"","builds":["Master Bounty Hunter / Master Carbineer / 4xxx Combat Medic","Master Bounty Hunter / Master Combat Medic / 4xxx Rifleman(Sniper)","Master Bounty Hunter / x444 Pistoleer / 44xx Combat Medic","Master Bounty Hunter / 444x Rifleman(Sniper) / 4xxx Doctor","Master Bounty Hunter / Master Squad Leader / 4xxx Combat Medic","Master Bounty Hunter / Master Creature Handler / 4xxx Combat Medic"],"targets":{"Ranged General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Assault armor (Crafted BH armor best durability), Peko feathers + Interwoven/Kimogila for health. Custom kinetic weapon + slice + PUP."},"es":""},{"id":"commando","name":"Commando","grp":"Hybrid / Support","sea":true,"regular":["Ranged General","Defense General","Opportune Chance"],"exotics":["Heavy Weapon Accuracy","Heavy Weapon Speed","Heavy Weapon Damage"],"g":{"role":"Heavy-weapon AoE burst damage + grenades","armor":"Assault","weapons":"Heavy Weapons (acid, lightning, beam, explosive, incendiary); Thrown weapons (grenades)","exoticSeas":"Heavy Weapon Accuracy ~17 / Heavy Weapon Speed ~17 / Heavy Weapon Damage (exotic) - optional","bangle":"Heavy Weapon Defense 35 (profession-granted defense; bangle supports ranged defense)","profExotics":"Thrown Weapon Accuracy (exotic); Thrown Weapon Speed (exotic)","jewelry":"","builds":["Master Commando / Master Combat Medic / 4xxx Squad Leader","Master Commando / Master Bounty Hunter / 4xxx Combat Medic","Master Commando / Master Smuggler / 4xxx Combat Medic","Master Commando / Master Squad Leader / 4xxx Combat Medic","Master Commando / Master Carbineer / 4xxx Combat Medic","Master Commando / Master Pistoleer / 4xxx Combat Medic"],"targets":{"Ranged General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Commando abilities ONLY work with the appropriate heavy weapon. Unique heavy weapon selection (Flamethrower, Rocket Launcher, etc.). Assault armor + Peko/Kimogila health."},"es":"weapon"},{"id":"squad-leader","name":"Squad Leader","grp":"Hybrid / Support","sea":true,"regular":["Ranged General","Defense General","Opportune Chance"],"exotics":[],"g":{"role":"Group buffs / tactical auras + ranged DPS (group-only abilities)","armor":"Assault","weapons":"Any ranged weapon (General Ranged)","exoticSeas":"[Chosen ranged weapon] Accuracy ~17 / [Chosen weapon] Speed ~17 / [Chosen weapon] Action Cost ~3","bangle":"[Chosen weapon] Defense 35","profExotics":"Called Shot Bonus (profession); Group Burst Run Efficiency (profession)","jewelry":"Hellfire Set (offensive); Veteran's Set (defensive)","builds":["Master Squad Leader / Master Combat Medic / 4xxx Carbineer","Master Squad Leader / Master Carbineer / 4xxx Combat Medic","Master Squad Leader / 44x4 Pistoleer / 44xx Combat Medic","Master Squad Leader / Master Bounty Hunter / 4xxx Combat Medic","4314 Squad Leader / Master Doctor / 4xxx Combat Medic","4314 Squad Leader / Master Commando / 4xxx Combat Medic"],"targets":{"Ranged General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Abilities require a group (leader, member within 64m, member not on same account). Heavily action-dependent - prioritize action regen foods. Assault armor."},"es":""},{"id":"smuggler","name":"Smuggler","grp":"Hybrid / Support","sea":true,"regular":["Ranged General","Defense General","Opportune Chance"],"exotics":["Pistol Accuracy","Pistol Speed","Pistol Action Cost"],"g":{"role":"Dirty-fighting debuffs/CC, slicing, spice crafting; pistol-based","armor":"Recon","weapons":"Pistols (ranged; melee smuggler not viable)","exoticSeas":"Pistol Accuracy ~17 / Pistol Speed ~17 / Pistol Action Cost ~3","bangle":"Pistol Defense 35","profExotics":"Pistol Accuracy While Moving (profession); Critical Strike Damage Increase (profession)","jewelry":"","builds":["Master Smuggler / Master Pistoleer / 4xxx Combat Medic","Master Smuggler / Master Pistoleer / Master Sharpshooter / Novice Doctor","Master Smuggler / Master Commando / 4xxx Combat Medic","Master Smuggler / Master Combat Medic / x4xx Pistoleer","Master Smuggler / 444x Carbineer / 4xxx Combat Medic"],"targets":{"Ranged General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Recon armor. Smugglers self-slice weapons/armor (slicing meta above). Provides Modify Pistol buff (+8% pistol dmg, +10m range). Spice crafting (Booster Blue, Neutron Pixie, Muon Gold)."},"es":"weapon"},{"id":"sharpshooter","name":"Sharpshooter","grp":"Ranged","sea":true,"regular":["Ranged General","Defense General","Opportune Chance"],"exotics":[],"g":{"role":"Core ranged starter profession; leads to Carbineer/Pistoleer/Sniper","armor":"Depends on advanced profession taken (Recon for Pistoleer/Sniper paths, Battle for Carbineer)","weapons":"Rifle; Carbine; Pistol (generalist ranged)","exoticSeas":"[Chosen weapon] Accuracy ~17 / [Chosen weapon] Speed ~17 / [Chosen weapon] Action Cost ~3","bangle":"[Chosen weapon] Defense 35","profExotics":"","jewelry":"","builds":["Foundation profession - meta builds are realized through Carbineer, Pistoleer, or Sniper (see those entries)."],"targets":{"Ranged General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Formerly 'Marksman'. Prerequisite trees (Pistols IV, Ranged Support IV, Carbine IV) gate the ranged advanced professions and several hybrids."},"es":""},{"id":"carbineer","name":"Carbineer","grp":"Ranged","sea":true,"regular":["Ranged General","Defense General","Opportune Chance"],"exotics":["Carbine Accuracy","Carbine Speed","Carbine Action Cost"],"g":{"role":"Medium-range AoE specialist + movement slows","armor":"Battle","weapons":"Carbine","exoticSeas":"Carbine Accuracy ~17 / Carbine Speed ~17 / Carbine Action Cost ~3","bangle":"Carbine Defense 35","profExotics":"Carbine Critical Chance (exotic); Carbine Damage (exotic)","jewelry":"","builds":["Carbineer / Bounty Hunter / 4xxx Combat Medic (solo)","Carbineer / Squad Leader / 4xxx Combat Medic (group)"],"targets":{"Ranged General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Battle armor (RIS best). Master removes battle-armor accuracy/RoF/movement penalties. Katarn armor is a good budget set. E11-style carbines."},"es":"weapon"},{"id":"pistoleer","name":"Pistoleer","grp":"Ranged","sea":true,"regular":["Ranged General","Defense General","Opportune Chance"],"exotics":["Pistol Accuracy","Pistol Speed","Pistol Action Cost"],"g":{"role":"Fast pistol offense + debuffs/CC (fastest speed cap 0.9s)","armor":"Recon","weapons":"Pistol","exoticSeas":"Pistol Accuracy ~17 / Pistol Speed ~17 / Pistol Action Cost ~3","bangle":"Pistol Defense 35","profExotics":"Pistol Critical Chance (exotic); Pistol Damage (exotic); Pistol Accuracy While Moving (profession)","jewelry":"Gunslinger Set (grants Fumble - drains target action)","builds":["Master Pistoleer / Master Smuggler / 4xxx Combat Medic","Master Pistoleer / Master Smuggler / Master Sharpshooter / Novice Doctor","Master Pistoleer / Master Bounty Hunter / 4xxx Combat Medic","Master Pistoleer / Master Commando / Novice Doctor"],"targets":{"Ranged General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Recon armor. Pistols have fastest speed cap (0.9s). Pistoleer is more accurate while moving."},"es":"weapon"},{"id":"sniper","name":"Sniper","grp":"Ranged","sea":true,"regular":["Ranged General","Defense General","Opportune Chance"],"exotics":["Rifle Accuracy","Rifle Speed","Rifle Action Cost"],"g":{"role":"Extreme-range single-target burst + stealth/crits (formerly Rifleman)","armor":"Recon","weapons":"Rifle","exoticSeas":"Rifle Accuracy ~17 / Rifle Speed ~17 / Rifle Action Cost ~3","bangle":"Rifle Defense 35","profExotics":"Rifle Critical Chance (exotic); Rifle Damage (exotic)","jewelry":"","builds":["Sniper(Rifleman) is paired in many builds; see Bounty Hunter / Squad Leader entries. Example: Master Squad Leader / 4xxx Rifleman / x3x4 Pistoleer / 4xxx Combat Medic"],"targets":{"Ranged General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Recon armor. Prone Sniper Shot for max damage. Cover/Conceal stealth. Jenkins J-1 is a current go-to rifle. Crit-chance is highly valued."},"es":"weapon"},{"id":"brawler","name":"Brawler","grp":"Melee","sea":true,"regular":["Melee General","Defense General","Opportune Chance"],"exotics":[],"g":{"role":"Core melee starter; leads to TKA/Fencer/Berserker/Lancer","armor":"Battle (when paired with a melee advanced profession)","weapons":"Unarmed; One-Handed; Two-Handed; Polearm (generalist)","exoticSeas":"[Chosen melee weapon] Accuracy ~17 / [Chosen weapon] Speed ~17 / [Chosen weapon] Action Cost ~3","bangle":"[Chosen weapon] Defense 35","profExotics":"","jewelry":"Pursuit Set (Novice Brawler req; Melee General 30/pc, speed boost + snare immunity ability)","builds":["Foundation profession - realized via TKA, Fencer, Berserker, or Lancer (see those entries)."],"targets":{"Melee General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Master Brawler is proficient in all melee weapons. Pursuit jewelry usable by any melee build with just Novice Brawler."},"es":""},{"id":"berserker","name":"Berserker","grp":"Melee","sea":true,"regular":["Melee General","Defense General","Opportune Chance"],"exotics":["Two-Handed Melee Accuracy","Two-Handed Melee Action Cost","Two-Handed Melee Critical Chance"],"g":{"role":"Slow, high single-target two-handed DPS (formerly Swordsman)","armor":"Battle","weapons":"Two-Handed melee","exoticSeas":"Two-Handed Melee Accuracy ~17 / Two-Handed Melee Speed ~17 / Two-Hand Melee Action Cost ~3","bangle":"Two-Handed Melee Defense 35","profExotics":"Two-Hand Melee Critical Chance (exotic); Two-Hand Melee Damage (exotic)","jewelry":"Relentless Jewelry (Unstoppable attacks - damage returns health)","builds":["Built from two Brawler columns: Brawler 4x4x / x44x / xx44, plus Berserker"],"targets":{"Melee General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Battle armor. Attack speed caps at 1.3s. Two-Handed weapons (e.g., heavy axe, 2H cleaver/sword)."},"es":"weapon"},{"id":"fencer","name":"Fencer","grp":"Melee","sea":true,"regular":["Melee General","Defense General","Opportune Chance"],"exotics":["One-Handed Weapon Accuracy","One-handed Weapon Speed","One-Handed Melee Action Cost"],"g":{"role":"Fast one-handed striker; Blind/Bleed/Snare debuffs","armor":"Battle","weapons":"One-Handed melee (abilities work with any melee weapon)","exoticSeas":"One-Handed Weapon Accuracy ~17 / One-Handed Weapon Speed ~17 / One-Hand Melee Action Cost ~3","bangle":"One-Handed Defense 35","profExotics":"1-H Critical Chance (exotic); 1-Handed Melee Damage (exotic)","jewelry":"Razor Set (Master Fencer; Melee General 30/pc, stacking Bleed Razor Waltz); Pursuit Set (Novice Brawler)","builds":["Master Fencer / Master Combat Medic / 4xxx Doctor / xx3x Smuggler (hybrid PvP)","Master Doctor / Master Fencer / xxx4 Lancer (hybrid)"],"targets":{"Melee General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Battle armor (RIS best). Improved Lunge self-buff (+combat speed/defense/crit). Fast pressure + debuffs."},"es":"weapon"},{"id":"lancer","name":"Lancer","grp":"Melee","sea":true,"regular":["Melee General","Defense General","Opportune Chance"],"exotics":["Polearm Accuracy","Polearm Speed","Polearm Action Cost"],"g":{"role":"Polearm AoE + crowd control (formerly Pikeman)","armor":"Battle","weapons":"Polearm","exoticSeas":"Polearm Accuracy ~17 / Polearm Speed ~17 / Polearm Action Cost ~3","bangle":"Polearm Defense 35","profExotics":"Polearm Critical Chance (exotic); Polearm Damage (exotic)","jewelry":"","builds":["Built from Brawler Two-Handed IV + Polearm IV, plus Lancer; commonly paired as a secondary AoE line (e.g., Master Doctor / Master Fencer / xxx4 Lancer)"],"targets":{"Melee General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Battle armor. AoE spin + knockdown; state attacks (intimidate, warcry, stun). Weapons: Lance, Vibro Lance, Metal/Wood Staff, etc."},"es":"weapon"},{"id":"teras-kasi-artist","name":"Teras Kasi Artist","grp":"Melee","sea":true,"regular":["Melee General","Defense General","Opportune Chance"],"exotics":["Unarmed Speed","Unarmed Damage","Unarmed Action Cost"],"g":{"role":"Unarmed tank; legendary defense (Center of Being, Power Boost)","armor":"Innate (TKA innate armor ~6000 at max; lost if any armor worn)","weapons":"Unarmed (or unarmed weapons: Vibro Knuckler, Blaster Fist, Massassi Knuckler)","exoticSeas":"Unarmed Accuracy ~17 / Unarmed Speed ~17 / Unarmed Damage (exotic) / Unarmed Action Cost ~3","bangle":"Unarmed Defense 35","profExotics":"Unarmed Critical Chance (exotic)","jewelry":"","builds":["Built from Brawler Two-Handed IV + Unarmed IV, plus TKA. Strong standalone tank; often paired with Doctor/Combat Medic for self-sustain."],"targets":{"Melee General":"400-450","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Uses INNATE armor (no armor pieces) - so SEA sockets come from shirt/weapon/jewelry/PSG rather than armor. As effective at tanking as a fully-armored trooper. Center of Being + Power Boost (+500 health)."},"es":"weapon"},{"id":"ranger","name":"Ranger","grp":"Hybrid / Support","sea":true,"regular":["Melee General","Defense General","Opportune Chance"],"exotics":[],"g":{"role":"Traps, stealth, steal; melee OR ranged flex (all stats are General)","armor":"Battle","weapons":"Melee or Ranged (weapon of choice; complements paired profession)","exoticSeas":"[Chosen weapon] Accuracy ~17 / [Chosen weapon] Speed ~17 / [Chosen weapon] Action Cost ~3","bangle":"[Chosen weapon] Defense 35","profExotics":"Terrain Negotiation (exotic)","jewelry":"Strider Set (negates approach-debuff slow)","builds":["Master Ranger / Master Combat Medic / weapon of choice","Master Commando / xx44 Ranger / 4x3x Bounty Hunter / 4xxx Combat Medic"],"targets":{"General (Melee/Ranged)":"400-450 on chosen line","Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"One of the only advanced professions able to attack with both melee and ranged in hand. Battle armor. AoE/blind/bleed + traps + stealth steal."},"es":""},{"id":"scout","name":"Scout","grp":"Hybrid / Support","sea":true,"regular":[],"exotics":[],"g":{"role":"Utility starter: camouflage, trapping, harvesting, survival; prerequisite for CH/Ranger/etc.","armor":"None specific (utility profession; wear armor of your combat build)","weapons":"N/A (no weapon specialization)","exoticSeas":"Follows your combat build's exotic SEAs","bangle":"Follows your combat build","profExotics":"Terrain Negotiation (exotic)","jewelry":"","builds":["Prerequisite/utility profession - provides Camouflage/Survival/Harvesting prerequisites for Bounty Hunter, Squad Leader, Creature Handler, Commando, Ranger."],"targets":{},"notes":"No dedicated combat SEA build; Scout is taken for prerequisites (Camouflage IV, Survival IV, Harvesting IV) and harvesting utility. Master Scout gains Enraging Spur (AoE stun)."},"es":""},{"id":"doctor","name":"Doctor","grp":"Healer","sea":true,"regular":["Defense General","Opportune Chance"],"exotics":["Healing Potency"],"g":{"role":"Primary healer (single-target + HoT + buffs); core of healer & hybrid builds","armor":"Battle","weapons":"Any (self-defense weapon; matched to hybrid line, e.g., Fencer)","exoticSeas":"Healing Potency (exotic, +1% healing/pt) / [Weapon] Accuracy/Speed if hybrid damage / Defense vs Knockdown/Stun (exotic) for survivability","bangle":"[Weapon] Defense 35 (if hybrid) or defensive bangle","profExotics":"Healing Potency (exotic); Note: Healing Efficiency & Cure Efficiency are profession-granted (not SEAs)","jewelry":"First Responder's Set (Master Doctor); Pathologist Set (Master Doctor)","builds":["Full healer PvE/PvP: Master Doctor / Master Combat Medic / Master Medic / xx4x Smuggler","Hybrid PvE/PvP: Master Doctor / Master Fencer / xxx4 Lancer"],"targets":{"Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Battle armor. Healing gear: Cybernetic Arm (+15% Healing Efficiency), Microsensory Mesh gloves (+4% Healing Potency), Taskmaster weapons (+5% Healing Efficiency). Buffbot droids extend buff duration."},"es":"all"},{"id":"combat-medic","name":"Combat Medic","grp":"Healer","sea":true,"regular":["Defense General","Opportune Chance"],"exotics":["Healing Potency","Medical Combat Speed"],"g":{"role":"Ranged AoE healing + DoT/debuff enemy pressure","armor":"Battle","weapons":"Any ranged (for damage hybrid) - debuffs/dots are medical, not weapon-based","exoticSeas":"Healing Potency (exotic) / Medical Combat Speed (exotic, lowers GCD of CM dots/debuffs) / Defense vs state (exotic) for survivability","bangle":"Defensive or [weapon] Defense 35 (if hybrid)","profExotics":"Healing Potency (exotic); Medical Combat Speed (exotic); Note: Bio-Suppression / Medical Warfare Efficiency are profession-granted","jewelry":"Blackbar's DOOM Set (Master CM); Plaguespreader Set (Master CM)","builds":["Full healer PvE/PvP: Master Doctor / Master Combat Medic / Master Medic / xx4x Smuggler","Hybrid PvP: Master Fencer / Master Combat Medic / 4xxx Doctor / xx3x Smuggler","Hybrid PvP/PvE: Master Combat Medic / Master Creature Handler / 4xxx Bounty Hunter"],"targets":{"Defense General":"400-450","Opportune Chance":"350-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Battle armor. Bacta Spray (AoE heal) + Bacta Toss. Strong DoTs (Neurotoxin, Deuterium Toss) and regen debuffs. Same healing gear as Doctor."},"es":"all"},{"id":"medic","name":"Medic","grp":"Healer","sea":true,"regular":["Defense General","Opportune Chance"],"exotics":["Healing Potency"],"g":{"role":"Base healing profession; branches to Doctor/Combat Medic/Smuggler/Bio-Engineer","armor":"Follows advanced profession taken","weapons":"N/A base","exoticSeas":"Healing Potency (exotic)","bangle":"Per final build","profExotics":"Healing Potency (exotic); Medical Experimentation (for Bio-Engineer path)","jewelry":"None (Master Medic has no exclusive set)","builds":["Foundation/prerequisite profession - realized via Doctor, Combat Medic, Bio-Engineer, or Smuggler (Medical Support IV path)."],"targets":{},"notes":"Prerequisite trees: Medical Augmentation -> Doctor, Ranged Healing -> Combat Medic, Organic Chemistry -> Bio-Engineer. Same healing gear options as Doctor."},"es":"all"},{"id":"bio-engineer","name":"Bio-Engineer","grp":"Crafter","sea":true,"regular":["Opportune Chance"],"exotics":["Medical Assembly","Medical Experimentation","Opportune Chance"],"g":{"role":"Pet creation + stims/enhancers/food additives","armor":"Recon","weapons":"N/A (crafter)","exoticSeas":"","bangle":"N/A (crafter)","profExotics":"Medical Assembly (exotic); Medical Experimentation (exotic); Genetic Engineering / Incubation Quality (profession)","jewelry":"","builds":["Crafter - two distinct suits: (1) Stim/Enhancer suit = Medical Assembly + Medical Experimentation + Opportune Chance; (2) Pet Creation suit = Focused Enzyme Manipulation."],"targets":{},"notes":"Recon armor class. Two separate crafting suits. +10 RE Chance bonus from mastering enables making SEAs. Pet stats need +10 Focused Enzyme Manipulation for cap."},"es":"all"},{"id":"bio-engineer-pet","name":"Bio-Engineer (Pets)","grp":"Crafter","sea":true,"regular":["Opportune Chance"],"exotics":["Incubation Time Reduction","Focused Enzyme Manipulation*","Fervent Mutation*"],"g":{"role":"Pet creation specialist — incubation speed, DPS/armor cap, mutation chance","armor":"Recon","weapons":"N/A (crafter)","exoticSeas":"Incubation Time Reduction / Focused Enzyme Manipulation / Fervent Mutation (all 3 exotic SEAs)","bangle":"N/A (crafter)","profExotics":"Incubation Time Reduction (exotic); Focused Enzyme Manipulation (exotic); Fervent Mutation (exotic)","jewelry":"","builds":["Pet Creation suit (3 exotic SEAs): Incubation Time Reduction + Focused Enzyme Manipulation + Fervent Mutation. Need +10 Focused Enzyme Manipulation total (3 SEAs + the Master Bio-Engineer box) to hit the 2.2 DPS/armor cap at egg formation."],"targets":{},"notes":"Pet-creation suit, separate from the stim/enhancer Bio-Engineer suit. Focused Enzyme Manipulation junk = 'A Poison Canister' (Imperial Star Destroyer heroic). Fervent Mutation junk = 'unidentified bones' + 'a Rebel clearance badge' (Echo Base, Hoth); +9 Fervent Mutation ≈ +0.675% mutation chance. Incubation Time Reduction ≈ up to 1h39m total."},"es":"all"},{"id":"creature-handler","name":"Creature Handler","grp":"Hybrid / Support","sea":true,"regular":["Defense General","Opportune Chance"],"exotics":[],"g":{"role":"Pet-based combat; player has low stats and relies on the pet","armor":"Battle","weapons":"Minimal personal weapon use ('Malevolent' weapons increase loyalty gain); pet does the fighting","exoticSeas":"Beast/pet stats (Beast Armor %, Beast Damage %, Beast Hitpoint %, Beast Attack Speed %) are profession-granted skill mods, NOT player SEAs / Defensive exotics (Defense vs state) for the handler","bangle":"Defensive bangle","profExotics":"Pet bonuses come from the pet's incubation (Bio-Engineer) + CH skill mods, not from player exotic tapes","jewelry":"Rancor Handler's Bracelet (right; +1 pet ability; Witches of Dathomir)","builds":["Master Creature Handler / Master Combat Medic / 4xxx Bounty Hunter","Master Bounty Hunter / Master Creature Handler / 4xxx Combat Medic"],"targets":{"Defense General":"350-450","Opportune Chance":"300-400","Toughness":"200-250","Endurance":"200-250"},"notes":"Battle armor. CH personal SEAs focus on survivability (defense/opportune) since damage comes from the pet. Divided Attention penalty removed at Creature Empathy IV. Pet quality is set by the Bio-Engineer who made it."},"es":""},{"id":"entertainer","name":"Entertainer","grp":"Other (no SEA)","sea":false,"regular":[],"exotics":[],"g":{"role":"Inspiration buffs (XP/faction/crafting), branches to Dancer/Musician/Image Designer","armor":"None (non-combat)","weapons":"Instruments / dance props (non-combat)","exoticSeas":"Inspiration-related mods are largely profession-granted, not exotic SEAs","bangle":"N/A","profExotics":"Inspiration mods (Attribute/Combat/Resist/Duration/Pulse) come from Dancer/Musician skill trees","jewelry":"Bracelet of Inspired Status (right; Inspiration Pulse Increase 1)","builds":["Full buff timer + max Inspiration: Master Dancer + Musician 4xxx + Entertainer x444","Master Musician + Dancer 4xxx + Entertainer x444","4.5hr timer: Master Dancer + Master Entertainer (or Master Musician + Master Entertainer)"],"targets":{},"notes":"Non-combat support. Max buff timer 5h30m (6h in Entertainment District / with Dancing Pet) and 20 Inspiration points. Optimization is build (skill boxes) + Inspiration gear, not combat SEAs."},"es":""},{"id":"dancer","name":"Dancer","grp":"Other (no SEA)","sea":false,"regular":[],"exotics":[],"g":{"role":"Visual performer; inspiration buffs + persuasion","armor":"None (non-combat)","weapons":"Dance props (non-combat)","exoticSeas":"N/A - inspiration mods are profession-granted","bangle":"N/A","profExotics":"Inspiration Reactive Proc / Combat / Resist / Duration (profession skill trees)","jewelry":"Captivator Heroic Set (up to 15% persuasion bonus to watchers); Bracelet of Inspired Status (right; Inspiration Pulse 1)","builds":["From Entertainer xx44 (Dancing IV + Entertainer Item Use IV) -> Novice Dancer; pair with Entertainer/Musician for full buff timer (see Entertainer)."],"targets":{},"notes":"Non-combat. Optimize with Inspiration skill boxes + Captivator set + props. Dual-wield props at Novice Dancer."},"es":""},{"id":"musician","name":"Musician","grp":"Other (no SEA)","sea":false,"regular":[],"exotics":[],"g":{"role":"Audio performer; inspiration buffs + luck bonus","armor":"None (non-combat)","weapons":"Instruments (non-combat)","exoticSeas":"N/A - inspiration mods are profession-granted","bangle":"N/A","profExotics":"Inspiration Attribute/Combat/Resist/Duration/Pulse/Base Point (profession skill trees)","jewelry":"Thriller Heroic Set (up to 15% luck bonus to watchers); Bracelet of Inspired Status (right; Inspiration Pulse 1)","builds":["From Entertainer x4x4 (Musicianship IV + Entertainer Item Use IV) -> Novice Musician; pair with Entertainer/Dancer for full buff timer (see Entertainer)."],"targets":{},"notes":"Non-combat. Optimize with Inspiration skill boxes + Thriller set + instruments (Nalargon at Master)."},"es":""},{"id":"image-designer","name":"Image Designer","grp":"Other (no SEA)","sea":false,"regular":[],"exotics":[],"g":{"role":"Character appearance customization + species changes + holo-emotes","armor":"None (non-combat)","weapons":"N/A","exoticSeas":"N/A - image design mods are profession-granted","bangle":"N/A","profExotics":"Hair/Face/Body-form/Marking Design mods (profession skill trees)","jewelry":"","builds":["From Entertainer 4xxx (all Image Design boxes + Novice Entertainer) -> Novice/Master Image Designer."],"targets":{},"notes":"Non-combat cosmetic profession. Master ID unlocks all markings/face/body options + species changes (Nanites, 1M credits). No SEA combat build."},"es":""},{"id":"artisan","name":"Artisan","grp":"Crafter","sea":true,"regular":["Opportune Chance"],"exotics":["Artisan Experimentation","Artisan Assembly","Reverse Engineering Chance"],"g":{"role":"Foundation crafter: vehicles, sub-components, power-ups, surveying; unlocks all crafting professions","armor":"N/A (crafter)","weapons":"N/A","exoticSeas":"Artisan Experimentation (up to 12pts in suit, +24 with SEAs; soft cap 25 total) / Opportune Chance / Reverse Engineering Chance","bangle":"N/A","profExotics":"Artisan Experimentation (exotic); Artisan Assembly (exotic); Surveying (exotic); Reverse Engineering Chance (exotic)","jewelry":"Tinkerer Set (Opportune Chance 30/pc, RE Chance 2/pc; up to 15% Free Craft proc); Slicer Set (Opportune Chance 30/pc, RE Chance 2/pc; Breakthrough proc on RE)","builds":["Crafting suit: Artisan Experimentation + Opportune Chance (+ RE Chance). Master Artisan + Novice of all 5 engineering crafters (+ suit) caps Artisan Experimentation at 25 points."],"targets":{},"notes":"Many high-use Chef foods and weapon/vehicle items use Artisan Experimentation. +10 RE Chance enables/boosts SEA reverse-engineering. Tinkerer/Slicer heroic sets are core crafter jewelry."},"es":"all"},{"id":"architect","name":"Architect","grp":"Crafter","sea":true,"regular":["Opportune Chance"],"exotics":["Structure Experimentation","Structure Assembly","Opportune Chance"],"g":{"role":"Structures: harvesters, factories, houses, furniture, city buildings","armor":"N/A (crafter)","weapons":"N/A","exoticSeas":"Structure Experimentation (up to 12pts - main need, e.g., capping harvester BER) / Structure Assembly (optional) / Opportune Chance","bangle":"N/A","profExotics":"Structure Experimentation (exotic); Structure Assembly (exotic); Artisan Experimentation (exotic)","jewelry":"Tinkerer / Slicer sets (Novice Artisan - shared crafter jewelry)","builds":["Crafting suit: Structure Experimentation (12pts) + Opportune Chance; Structure Assembly optional. Often pairs with Master Artisan for sub-components."],"targets":{},"notes":"Structure Experimentation caps equipment like harvester base extraction rate. Assembly typically optional for structures."},"es":"all"},{"id":"armorsmith","name":"Armorsmith","grp":"Crafter","sea":true,"regular":["Opportune Chance"],"exotics":["Armor Assembly","Armor Experimentation","Artisan Experimentation"],"g":{"role":"Armor, PSGs, clothing (belts/gloves/boots); armor repairs & color kits","armor":"N/A (crafter)","weapons":"N/A","exoticSeas":"Armor Assembly (for sockets & repairs; +160 guarantees a socket) / Armor Experimentation (21pts) / Opportune Chance","bangle":"N/A","profExotics":"Armor Assembly (exotic); Armor Experimentation (exotic); Artisan Experimentation (exotic)","jewelry":"Tinkerer / Slicer sets (Novice Artisan)","builds":["Crafting suit (highly recommended): +Armor Assembly + +Armor Experimentation (21pts) + +Opportune Chance. Reach +160 Armor Assembly to guarantee sockets for SEAs."],"targets":{},"notes":"Crafts the socketed armor everyone else slots SEAs into. Bake-ins (Ranged/Melee General) + Peko feathers + Krayt/Kimogila/Nightsister scales for health. RIS = top battle armor."},"es":"all"},{"id":"weaponsmith","name":"Weaponsmith","grp":"Crafter","sea":true,"regular":["Opportune Chance"],"exotics":["Weapon Assembly","Weapon Experimentation","Artisan Experimentation"],"g":{"role":"Melee/ranged/heavy weapons + repairs; the weapons every combatant needs","armor":"N/A (crafter)","weapons":"N/A (crafts all weapon types)","exoticSeas":"Weapon Assembly (for sockets/repairs; soft socket threshold high) / Weapon Experimentation (12pts; also used for socketing) / Opportune Chance","bangle":"N/A","profExotics":"Weapon Assembly (exotic); Weapon Experimentation (exotic); Artisan Experimentation (exotic)","jewelry":"Tinkerer / Slicer sets (Novice Artisan)","builds":["Crafting suit: Weapon Assembly + Weapon Experimentation (12pts) + Opportune Chance. Weapon Experimentation also drives socketing."],"targets":{},"notes":"NGE 'Core' system - stats live in the weapon core, placed into any skin. Add RE power bits (e.g., Ranged General) + looted enhancements (Gorax Shard=speed, Acklay Bone=melee dmg, Krayt Tissue=ranged dmg) + augments (+250 health/action)."},"es":"all"},{"id":"droid-engineer","name":"Droid Engineer","grp":"Crafter","sea":true,"regular":["Opportune Chance"],"exotics":["Droid Experimentation","Droid Assembly","Opportune Chance"],"g":{"role":"Combat/utility/BH/astromech droids; RE power-ups, crafter's knives","armor":"N/A (crafter)","weapons":"N/A","exoticSeas":"Droid Experimentation (recommended for combat modules) / Droid Assembly (optional) / Opportune Chance","bangle":"N/A","profExotics":"Droid Experimentation (exotic); Droid Assembly (exotic)","jewelry":"Droidsmith's Tool Set bandolier (Socket 1, Droid Assembly 5, Droid Customization 5, Droid Experimentation 5)","builds":["Crafting suit: Droid Experimentation (for combat modules) + Opportune Chance; Assembly optional. Most modules don't need experimentation - only a select few (combat modules, hand sample)."],"targets":{},"notes":"Experimentation only matters for select items (combat modules, armor modules, hand-sample modules). Droidsmith's Tool Set bandolier is the signature gear."},"es":"all"},{"id":"shipwright","name":"Shipwright","grp":"Crafter","sea":true,"regular":["Opportune Chance"],"exotics":["Opportune Chance"],"g":{"role":"Starship components, chassis blueprints, space consumables","armor":"N/A (crafter)","weapons":"N/A","exoticSeas":"Shipwright Experimentation (+8 each on 3 third-order SEAs; alt: aim +20 total, the key threshold) / Shipwright Assembly (+11 each) / Opportune Chance (+32 each)","bangle":"N/A","profExotics":"Shipwright Experimentation (exotic); Shipwright Assembly (exotic); Various component Experimentation mods consolidated (Dec 2025) into Shipwright Experimentation/Assembly","jewelry":"Pendant of the Shipwright (Chassis/Engine/Shield/Weapon Exp +2 - currently low value)","builds":["Crafting suit (3 third-order SEAs on chest/shirt/weapon): +8 Shipwright Experimentation, +11 Shipwright Assembly, +32 Opportune Chance each. Alternative: +20 Shipwright Experimentation, forgoing Assembly/Opportune."],"targets":{},"notes":"Dec 2025 hotfix consolidated 7 separate skills into Shipwright Experimentation + Shipwright Assembly (one suit instead of 7). +10 RE Chance gives +1% to space-loot Reverse Engineering."},"es":"all"},{"id":"tailor","name":"Tailor","grp":"Crafter","sea":true,"regular":["Opportune Chance"],"exotics":["Clothing Assembly","Clothing Experimentation","Artisan Experimentation"],"g":{"role":"Clothing, bodysuits, socketed shirts, jewelry settings, armor padding","armor":"N/A (crafter)","weapons":"N/A","exoticSeas":"Clothing Assembly (+160 to guarantee a socket on crafted clothing) / Clothing Experimentation / Opportune Chance","bangle":"N/A","profExotics":"Clothing Assembly (exotic); Clothing Experimentation (exotic); Artisan Experimentation (exotic)","jewelry":"Tinkerer / Slicer sets (Novice Artisan)","builds":["Crafting suit: primarily +Clothing Assembly (reach +160 for guaranteed sockets); add Clothing Experimentation + Opportune Chance."],"targets":{},"notes":"Crafts socketed shirts (where one of the 3 exotic SEAs goes) and the Prison Guard/Prisoner items that REMOVE SEAs (destroys the SEA, frees the socket). Also crafts trim for Chef casks."},"es":"all"},{"id":"chef","name":"Chef","grp":"Crafter","sea":true,"regular":["Opportune Chance"],"exotics":["Food Experimentation","Artisan Experimentation","Food Assembly"],"g":{"role":"Food & drink buffs (HAM/skill), pet food, beast supplements","armor":"N/A (crafter)","weapons":"N/A","exoticSeas":"Food Experimentation / Artisan Experimentation (for foods in the Artisan tree) / Opportune Chance","bangle":"N/A","profExotics":"Food Experimentation (exotic); Food Assembly (exotic); Artisan Experimentation (exotic)","jewelry":"Tinkerer / Slicer sets (Novice Artisan)","builds":["Crafting suit: +Food Experimentation + +Artisan Experimentation (if Master Artisan, for the many foods in the Artisan tree). Master Artisan + Novice of all 5 crafters caps Artisan Experimentation at 25."],"targets":{},"notes":"Foods are critical end-game tuning (reach soft caps tapes don't). Needs Bio-Engineer food additives for top-tier output. Casks (3x quantity) need Tailor trim."},"es":"all"}];
 let advisorSel = new Set();
-
-function adviseBuild(ids) {
-  const sel = ADVISOR_PROFESSIONS.filter(p => ids.includes(p.id));
-  const f = {
-    ranged:   sel.some(p => p.category === 'ranged' || p.combat === 'ranged'),
-    melee:    sel.some(p => p.category === 'melee'  || p.combat === 'melee'),
-    jedi:     sel.some(p => p.category === 'jedi'),
-    healing:  sel.some(p => p.category === 'healing'),
-    crafting: sel.some(p => p.category === 'crafting'),
-  };
-  let core;
-  if (f.ranged && f.melee)   core = ['Ranged General','Melee General','Defense General'];
-  else if (f.ranged)         core = ['Ranged General','Defense General','Opportune Chance'];
-  else if (f.melee || f.jedi)core = ['Melee General','Defense General','Opportune Chance'];
-  else if (f.healing)        core = ['Endurance Boost','Toughness Boost','Defense General'];
-  else if (f.crafting)       core = ['Endurance Boost','Toughness Boost','Defense General'];
-  else                       core = ['Defense General','Endurance Boost','Toughness Boost'];
-
-  let shirt, weapon, chest;
-  if (f.healing) {
-    chest  = ['Healing Potency','Medical Combat Speed','Endurance Boost'];
-    shirt  = ['Healing Potency','Medical Combat Speed','Toughness Boost'];
-    weapon = ['Healing Potency','Medical Combat Speed','Opportune Chance'];
-  } else if (f.crafting) {
-    const craftProf = sel.find(p => p.category === 'crafting');
-    const exp = (craftProf && ADVISOR_CRAFT_EXP_BY_PROF[craftProf.id]) || ADVISOR_CRAFT_EXP_FALLBACK;
-    chest  = [exp,'Endurance Boost','Toughness Boost'];
-    shirt  = [exp,'Endurance Boost','Toughness Boost'];
-    weapon = ['Surveying',exp,'Opportune Chance']; // Luck → Opportune Chance
-  } else {
-    const P = f.ranged ? 'Ranged General' : 'Melee General';
-    chest  = [P,'Toughness Boost','Endurance Boost'];
-    shirt  = [P,'Toughness Boost','Endurance Boost'];
-    weapon = [P,'Opportune Chance','Toughness Boost'];
-  }
-  const tags = [];
-  if (f.ranged) tags.push('Ranged');
-  if (f.melee)  tags.push('Melee');
-  if (f.jedi)   tags.push('Jedi');
-  if (f.healing)tags.push('Healer');
-  if (f.crafting)tags.push('Crafter');
-  return { standard: core, exotic: [shirt, weapon, chest],
-           description: tags.length ? tags.join('/') + ' Build' : 'Balanced Build' };
+const ADVISOR_STAT_PRIORITY = ['Ranged General','Melee General','Defense General','Opportune Chance','Toughness Boost','Endurance Boost'];
+function advisorGroups(){ const g=[]; ADVISOR_PROFS.forEach(p=>{ if(!g.includes(p.grp)) g.push(p.grp); }); return g; }
+function advisorSelected(){ return ADVISOR_PROFS.filter(p => advisorSel.has(p.id)); }
+function advisorDedupe(arr){
+  const s=[]; arr.forEach(m=>{ if(m && !s.includes(m)) s.push(m); });
+  return s.sort((a,b)=>{ const ia=ADVISOR_STAT_PRIORITY.indexOf(a), ib=ADVISOR_STAT_PRIORITY.indexOf(b); return (ia<0?99:ia)-(ib<0?99:ib); });
 }
-
+function advisorCombined(){
+  const sel = advisorSelected().filter(p => p.sea);
+  const reg = advisorDedupe([].concat(...sel.map(p => p.regular||[]))).slice(0,3);
+  const exoAll=[]; sel.forEach(p => (p.exotics||[]).forEach(m => { if(m && !exoAll.includes(m)) exoAll.push(m); }));
+  return { reg, exo: exoAll.slice(0,3), sel };
+}
 function openAdvisor() {
   renderAdvisorProfs();
   renderAdvisorPreview();
@@ -1641,53 +1593,69 @@ function toggleAdvisorProf(id) {
 function renderAdvisorProfs() {
   const wrap = document.getElementById('advisor-profs');
   if (!wrap) return;
-  wrap.innerHTML = ADVISOR_CATEGORIES.map(([cat, label]) => {
-    const profs = ADVISOR_PROFESSIONS.filter(p => p.category === cat);
+  wrap.innerHTML = advisorGroups().map(grp => {
+    const profs = ADVISOR_PROFS.filter(p => p.grp === grp);
     return `<div class="advisor-cat">
-      <div class="advisor-cat-label">${label}</div>
+      <div class="advisor-cat-label">${grp}</div>
       <div class="advisor-profs">
         ${profs.map(p => `<button class="advisor-prof ${advisorSel.has(p.id)?'sel':''}" onclick="toggleAdvisorProf('${p.id}')">${p.name}</button>`).join('')}
       </div>
     </div>`;
   }).join('');
 }
+function advisorList(a){ return (a && a.length) ? a.join(', ') : '—'; }
 function renderAdvisorPreview() {
   const box = document.getElementById('advisor-preview');
   if (!box) return;
-  if (advisorSel.size === 0) {
-    box.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Select at least one profession to see recommended stats.</div>';
+  const sel = advisorSelected();
+  if (sel.length === 0) {
+    box.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">Select one or more professions (you can combine, e.g. Fencer + Combat Medic) to see the meta SEA / exotic loadout.</div>';
     return;
   }
-  const rec = adviseBuild([...advisorSel]);
-  const EXO = ['Clothing / Shirt', 'Weapon', 'Armor'];
-  const triple = t => t.filter(Boolean).join(', ') || '—';
-  box.innerHTML = `
-    <div style="font-family:'Orbitron',sans-serif;letter-spacing:1px;color:var(--accent2);margin-bottom:8px;">${rec.description}</div>
-    <div style="font-size:12px;line-height:1.7;">
-      <div><strong style="color:var(--accent);">Standard SEAs ×9:</strong> ${triple(rec.standard)}</div>
-      ${rec.exotic.map((tri,i) => `<div><strong style="color:var(--accent3);">${EXO[i]}:</strong> ${triple(tri)}</div>`).join('')}
+  const { reg, exo } = advisorCombined();
+  const seaSel = sel.filter(p => p.sea);
+  let html = '';
+  if (seaSel.length) {
+    html += `<div style="font-family:'Orbitron',sans-serif;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">Combined loadout — ${seaSel.map(p=>p.name).join(' + ')}</div>
+      <div style="font-size:12px;line-height:1.7;margin-bottom:6px;">
+        <div><strong style="color:var(--accent);">Regular SEAs ×9:</strong> ${advisorList(reg)}</div>
+        <div><strong style="color:var(--accent3);">Exotic SEAs (all 3 exotic slots):</strong> ${exo.length?advisorList(exo):'<span style="color:var(--text-dim)">weapon-specific — see per-profession notes</span>'}</div>
+      </div>`;
+  }
+  html += sel.map(p => {
+    const g = p.g || {};
+    if (!p.sea) return `<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;"><div style="color:var(--accent2);font-family:'Orbitron',sans-serif;">${p.name}</div><div style="font-size:11.5px;color:var(--text-dim);">${g.role||''} — no SEA build.</div></div>`;
+    const tg = Object.entries(g.targets||{}).map(([k,v])=>`${k} ${v}`).join(' · ');
+    return `<div style="border-top:1px solid var(--border);padding-top:8px;margin-top:8px;font-size:11.5px;line-height:1.6;">
+      <div style="color:var(--accent2);font-family:'Orbitron',sans-serif;">${p.name} <span style="color:var(--text-dim);font-size:10.5px;">(${p.grp}${g.armor?' · '+g.armor:''})</span></div>
+      <div style="color:var(--text-dim);">${g.role||''}</div>
+      <div><strong style="color:var(--accent3);">Exotics:</strong> ${p.exotics.length?advisorList(p.exotics):(g.exoticSeas||'weapon-specific')}</div>
+      ${g.bangle?`<div><strong style="color:var(--accent3);">Bangle:</strong> ${g.bangle}</div>`:''}
+      ${g.jewelry?`<div><strong style="color:var(--gold);">Jewelry:</strong> ${g.jewelry}</div>`:''}
+      ${tg?`<div><strong style="color:var(--accent);">Targets:</strong> ${tg}</div>`:''}
+      ${g.builds&&g.builds.length?`<div style="margin-top:3px;"><strong style="color:var(--text);">Meta builds:</strong><br>${g.builds.map(b=>'• '+b).join('<br>')}</div>`:''}
+      ${g.notes?`<div style="margin-top:3px;color:var(--text-dim);">${g.notes}</div>`:''}
     </div>`;
+  }).join('');
+  box.innerHTML = html;
 }
 function applyAdvisor() {
-  if (advisorSel.size === 0) { showToast('Select at least one profession first.'); return; }
-  const rec = adviseBuild([...advisorSel]);
+  const { reg, exo, sel } = advisorCombined();
+  if (sel.length === 0) { showToast('Select at least one SEA profession first.'); return; }
   const pow = 35;
-  const std = rec.standard;
   state.standard.forEach(s => {
-    s.enhance1 = std[0] || ''; s.enhance2 = std[1] || ''; s.enhance3 = std[2] || '';
+    s.enhance1 = reg[0]||''; s.enhance2 = reg[1]||''; s.enhance3 = reg[2]||'';
     if (s.enhance1 || s.enhance2 || s.enhance3) s.power = pow;
   });
-  rec.exotic.forEach((tri, idx) => {
-    const s = state.exotic[idx];
-    if (!s) return;
-    s.enhance1 = tri[0] || ''; s.enhance2 = tri[1] || ''; s.enhance3 = tri[2] || '';
-    if (s.enhance1 || s.enhance2 || s.enhance3) s.power = pow;
-  });
+  if (exo.length) {
+    state.exotic.forEach(s => { s.enhance1=exo[0]||''; s.enhance2=exo[1]||''; s.enhance3=exo[2]||''; if(s.enhance1||s.enhance2||s.enhance3) s.power=pow; });
+  }
   renderSEAGrid();
   renderPriceSheet();
   closeAdvisor();
-  showToast('Loadout Advisor applied: ' + rec.description);
+  showToast('Loadout Advisor applied: ' + sel.map(p=>p.name).join(' + '));
 }
+
 document.addEventListener('click', e => {
   if (!e.target.closest('.qmod-wrap')) closeAllQmodDropdowns();
 });
@@ -1892,6 +1860,11 @@ async function init() {
     document.getElementById('app').style.display = 'block';
     document.getElementById('header-status').textContent = 'SYSTEM ONLINE';
 
+    // Restore persisted SEA configuration (survives navigation; cleared only on Reset)
+    try {
+      const _s = JSON.parse(localStorage.getItem('blueshift-order-state'));
+      if (_s && Array.isArray(_s.standard) && Array.isArray(_s.exotic)) { state.standard = _s.standard; state.exotic = _s.exotic; }
+    } catch(e){}
     populateBulkSelects();
     populateEnhancerSelects();
     renderPresetDropdown();
@@ -1911,3 +1884,4 @@ init();
 </script>
 </body>
 </html>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
