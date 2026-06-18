@@ -363,6 +363,7 @@
     <div class="logo-sub">SEA ORDER FORM</div>
   </div>
   <div class="header-divider"></div>
+  <a href="attributes.html" style="text-decoration:none;font-family:'Share Tech Mono',monospace;background:rgba(0,255,157,0.1);border:1px solid var(--accent2,#00ff9d);color:var(--accent2,#00ff9d);padding:7px 14px;border-radius:6px;font-size:12px;letter-spacing:1px;margin-right:14px;">📊 Attribute Planner</a>
   <div class="status-indicator">
     <div class="status-dot"></div>
     <span id="header-status">LOADING...</span>
@@ -458,7 +459,7 @@
         </div>
         <!-- BUILD ADVISOR -->
         <div class="bulk-group">
-          <button class="bulk-apply" onclick="openAdvisor()" title="Recommend stats from your professions" style="background:rgba(176,106,255,0.12);border-color:var(--admin,#b06aff);color:var(--admin,#b06aff);">🧭 Build Advisor</button>
+          <button class="bulk-apply" onclick="openAdvisor()" title="Recommend stats from your professions" style="background:rgba(176,106,255,0.12);border-color:var(--admin,#b06aff);color:var(--admin,#b06aff);">🧭 Loadout Advisor</button>
         </div>
         <!-- QUICK MODIFIER BUTTONS -->
         <div class="qmod-wrap">
@@ -639,11 +640,11 @@
 <div class="advisor-overlay" id="advisor-overlay">
   <div class="advisor-modal">
     <div class="advisor-head">
-      <div class="advisor-title">🧭 BUILD ADVISOR</div>
+      <div class="advisor-title">🧭 LOADOUT ADVISOR</div>
       <button class="advisor-x" onclick="closeAdvisor()">✕ CLOSE</button>
     </div>
     <div class="advisor-body">
-      <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Select your combat professions — we'll recommend an optimal SEA &amp; exotic stat layout, then apply it to the grid.</div>
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Select your combat professions. Recommendations will be made for SEA and exotic layouts.</div>
       <div id="advisor-profs"></div>
       <div class="advisor-preview" id="advisor-preview"></div>
     </div>
@@ -1327,6 +1328,8 @@ function renderRunningStats() {
       totals[mod] = (totals[mod]||0)+val;
     });
   });
+  // Publish loadout so the Attribute Planner (attributes.html) can auto-import it.
+  try { localStorage.setItem('blueshift-sea-loadout', JSON.stringify({ totals, when: Date.now() })); } catch(e){}
   const emptyEl = document.getElementById('stats-empty');
   const gridEl  = document.getElementById('stats-grid');
   if (!emptyEl||!gridEl) return;
@@ -1530,7 +1533,8 @@ const ADVISOR_PROFESSIONS = [
   { id:'tka',              name:'Teras Kasi Artist', category:'melee' },
   { id:'doctor',           name:'Doctor',            category:'healing' },
   { id:'combat-medic',     name:'Combat Medic',      category:'healing' },
-  { id:'jedi',             name:'Jedi',              category:'jedi' },
+  { id:'jedi-melee',       name:'Jedi (Melee)',      category:'jedi', combat:'melee' },
+  { id:'jedi-ranged',      name:'Jedi (Ranged)',     category:'jedi', combat:'ranged' },
   { id:'smuggler',         name:'Smuggler',          category:'support' },
   { id:'squad-leader',     name:'Squad Leader',      category:'support' },
   { id:'ranger',           name:'Ranger',            category:'support' },
@@ -1560,8 +1564,8 @@ let advisorSel = new Set();
 function adviseBuild(ids) {
   const sel = ADVISOR_PROFESSIONS.filter(p => ids.includes(p.id));
   const f = {
-    ranged:   sel.some(p => p.category === 'ranged'),
-    melee:    sel.some(p => p.category === 'melee' || p.category === 'jedi'),
+    ranged:   sel.some(p => p.category === 'ranged' || p.combat === 'ranged'),
+    melee:    sel.some(p => p.category === 'melee'  || p.combat === 'melee'),
     jedi:     sel.some(p => p.category === 'jedi'),
     healing:  sel.some(p => p.category === 'healing'),
     crafting: sel.some(p => p.category === 'crafting'),
@@ -1662,7 +1666,7 @@ function applyAdvisor() {
   renderSEAGrid();
   renderPriceSheet();
   closeAdvisor();
-  showToast('Build Advisor applied: ' + rec.description);
+  showToast('Loadout Advisor applied: ' + rec.description);
 }
 document.addEventListener('click', e => {
   if (!e.target.closest('.qmod-wrap')) closeAllQmodDropdowns();
