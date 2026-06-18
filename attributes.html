@@ -146,7 +146,7 @@
   </div>
   <div class="header-divider"></div>
   <button class="btn ghost" onclick="goOrder()">📋 Order Form</button>
-  <button class="btn ghost" onclick="goHome()">⌂ Home</button>
+  <button class="btn ghost" id="home-btn" onclick="goHome()">⌂ Home</button>
 </header>
 
 <div class="wrap">
@@ -462,8 +462,9 @@ function resetAll(){
 }
 
 // ── Navigation ───────────────────────────────────────────────────────
-function goOrder(){ if (window.electronAPI && window.electronAPI.navigate) window.electronAPI.navigate('order'); else window.location.href='order.html'; }
-function goHome(){ if (window.electronAPI && window.electronAPI.navigate) window.electronAPI.navigate('shell'); else window.location.href='shell.html'; }
+const IS_DESKTOP = !!(window.electronAPI && window.electronAPI.navigate);
+function goOrder(){ if (IS_DESKTOP) window.electronAPI.navigate('order'); else window.location.href='index.html'; }
+function goHome(){ if (IS_DESKTOP) window.electronAPI.navigate('shell'); }
 
 // ── Toast ────────────────────────────────────────────────────────────
 let toastT;
@@ -487,6 +488,8 @@ function renderRefs(){
 
 // ── Init ─────────────────────────────────────────────────────────────
 function initRender(){
+  // Home only makes sense in the desktop app; the website has no shell page.
+  if (!IS_DESKTOP){ const hb=document.getElementById('home-btn'); if (hb) hb.style.display='none'; }
   renderZone('jewelry-cards','jewelry');
   renderZone('food-cards','food');
   renderZone('armor-manual','armor');
