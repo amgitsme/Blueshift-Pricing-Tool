@@ -105,6 +105,22 @@
   .scale-list { font-size:12px; line-height:1.9; color:var(--text); }
   .scale-list .formula { color:var(--accent3); display:block; margin-top:6px; font-size:11.5px; }
   .subhead { color:var(--accent3); font-size:11px; letter-spacing:1px; margin:10px 0 4px; }
+  .selgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; }
+  .sel { display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--accent3); letter-spacing:.5px; }
+  .sel select, .sel input { background:var(--panel2); border:1px solid var(--border); border-radius:5px; color:var(--text); padding:6px 8px; font-size:12px; }
+  tr.hprow td { border-top:2px solid var(--border); }
+  .foodcat { margin-bottom:8px; }
+  .foodcat-h { color:var(--accent3); font-size:10.5px; letter-spacing:1px; margin:6px 0 3px; text-transform:uppercase; }
+  .foodgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:5px; }
+  .fooditem { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text); background:var(--panel2); border:1px solid var(--border); border-radius:5px; padding:5px 8px; cursor:pointer; }
+  .fooditem.on { border-color:var(--accent); }
+  .fooditem .nc { color:var(--accent3); font-style:normal; font-size:10px; }
+  .sect-reset { float:right; font-family:inherit; font-size:10px; letter-spacing:1px; padding:2px 9px; border:1px solid var(--border); background:transparent; color:var(--accent3); border-radius:4px; cursor:pointer; }
+  .sect-reset:hover { border-color:var(--red,#e0556b); color:var(--red,#e0556b); }
+  .panel-title.collapsible { cursor:pointer; user-select:none; }
+  .pchev { display:inline-block; transition:.2s; margin-right:6px; color:var(--text-dim); }
+  .panel.collapsed .panel-body { display:none; }
+  .panel.collapsed .pchev { transform:rotate(-90deg); }
 
   /* results */
   .results { display:grid; grid-template-columns:1fr; gap:0; }
@@ -147,7 +163,11 @@
   <div class="header-divider"></div>
   <button class="btn ghost" onclick="goOrder()">📋 Order Form</button>
   <button class="btn ghost" id="home-btn" onclick="goHome()">⌂ Home</button>
+  <button class="btn ghost" onclick="exportPlanner()">💾 Save</button>
+  <button class="btn ghost" onclick="importPlanner()">📂 Load</button>
+  <button class="btn ghost" onclick="resetAll()" style="border-color:var(--red,#e0556b);color:var(--red,#e0556b);">↺ Reset Planner</button>
 </header>
+<input type="file" id="planner-file" accept=".bsattr,.bsea,.txt,.json" style="display:none" onchange="handlePlannerFile(this)">
 
 <div class="wrap">
   <div class="intro">
@@ -160,23 +180,44 @@
 
   <!-- STEP 1: JEWELRY -->
   <div class="panel">
-    <div class="panel-title"><span class="step">Step 1</span> Jewelry <span class="hint">pick an attribute, enter the amount it adds</span></div>
+    <div class="panel-title collapsible" onclick="toggleSection(this)"><button class="sect-reset" onclick="event.stopPropagation(); resetSection('jewelry')">↺ Reset</button><span class="pchev">▾</span><span class="step">Step 1</span> Jewelry <span class="hint">pick an attribute, enter the amount it adds</span></div>
     <div class="panel-body"><div class="cards" id="jewelry-cards"></div></div>
   </div>
 
-  <!-- STEP 2: FOOD / BUFFS -->
+  <!-- STEP 2: FAMILIAR / BACKPACK / HEROIC / BUFFS -->
   <div class="panel">
-    <div class="panel-title"><span class="step">Step 2</span> Food / Stims / Buffs <span class="hint">name each slot to track it; only the 6 core attributes feed the totals</span></div>
+    <div class="panel-title collapsible" onclick="toggleSection(this)"><button class="sect-reset" onclick="event.stopPropagation(); resetSection('gear')">↺ Reset</button><span class="pchev">▾</span><span class="step">Step 2</span> Familiar · Backpack · Heroic · Buffs <span class="hint">one selection each — only core-stat buffs feed the totals</span></div>
     <div class="panel-body">
-      <div class="cards" id="food-cards"></div>
-      <div class="subhead">Quick add (common core-attribute foods)</div>
-      <div class="footer-actions" id="food-quickadd"></div>
+      <div class="selgrid">
+        <label class="sel">Familiar<select id="sel-familiar" onchange="setSelector('familiar',this.value)"></select></label>
+        <label class="sel">Backpack<select id="sel-backpack" onchange="setSelector('backpack',this.value)"></select></label>
+        <label class="sel">Heroic Set<select id="sel-heroic" onchange="setHeroic('set',this.value)"></select></label>
+        <label class="sel">Heroic Pieces<select id="sel-heroic-pieces" onchange="setHeroic('pieces',this.value)"></select></label>
+      </div>
+      <div class="subhead">Buff Items <span class="hint">one active per group (shared cooldown)</span></div>
+      <div class="selgrid" id="buff-selects"></div>
+      <div class="subhead">Health sources (HP)</div>
+      <div class="selgrid">
+        <label class="sel">Armor HP (feathers / scales)<input type="number" step="any" id="hp-armor" placeholder="0" oninput="setHealth('armor',this.value)"></label>
+        <label class="sel">Weapon augment HP<input type="number" step="any" id="hp-augment" placeholder="0" oninput="setHealth('augment',this.value)"></label>
+      </div>
     </div>
   </div>
 
-  <!-- STEP 3: ARMOR / SEAs -->
+  <!-- STEP 3: FOOD / BUFFS -->
   <div class="panel">
-    <div class="panel-title"><span class="step">Step 3</span> Armor / SEAs</div>
+    <div class="panel-title collapsible" onclick="toggleSection(this)"><button class="sect-reset" onclick="event.stopPropagation(); resetSection('food')">↺ Reset</button><span class="pchev">▾</span><span class="step">Step 3</span> Food / Stims / Buffs <span class="hint">name each slot to track it; only the 6 core attributes feed the totals</span></div>
+    <div class="panel-body">
+      <div class="subhead">Consumables <span class="hint">check what you're running — only core-attribute foods feed totals</span></div>
+      <div id="food-catalog"></div>
+      <div class="subhead">Custom food / buff <span class="hint">anything not listed above</span></div>
+      <div class="cards" id="food-cards"></div>
+    </div>
+  </div>
+
+  <!-- STEP 4: ARMOR / SEAs -->
+  <div class="panel">
+    <div class="panel-title collapsible" onclick="toggleSection(this)"><button class="sect-reset" onclick="event.stopPropagation(); resetSection('armor')">↺ Reset</button><span class="pchev">▾</span><span class="step">Step 4</span> Armor / SEAs</div>
     <div class="panel-body">
       <div class="modebar">
         <div class="toggle">
@@ -193,20 +234,21 @@
 
   <!-- RESULTS -->
   <div class="panel">
-    <div class="panel-title">Total &amp; Effective Attributes <span class="hint">Total = what your character sheet shows (press C). Effective = after diminishing returns.</span></div>
+    <div class="panel-title collapsible" onclick="toggleSection(this)"><span class="pchev">▾</span>Total &amp; Effective Attributes <span class="hint">Total = what your character sheet shows (press C). Effective = after diminishing returns.</span></div>
     <div class="panel-body">
       <table class="attr">
         <thead><tr>
           <th>Attribute</th>
+          <th class="r">Non-SEA</th>
+          <th class="r">SEA</th>
           <th class="r">Total</th>
           <th class="r">Effective</th>
-          <th>Goal &amp; status</th>
+          <th>Goal &amp; SEA headroom</th>
         </tr></thead>
         <tbody id="results-body"></tbody>
       </table>
       <div class="footer-actions">
         <button class="btn" onclick="copySummary()">⧉ Copy Summary</button>
-        <button class="btn ghost" onclick="resetAll()">↺ Reset Planner</button>
       </div>
     </div>
   </div>
@@ -298,19 +340,167 @@ const FOOD_REF = [
   ['Corellian Ale','Melee Accuracy','220'],
 ];
 
-// ── State ────────────────────────────────────────────────────────────
+// ── Catalogs (stat codes: melee,tough,endur,range,defen,luck; hp = flat Health; hpPct = % Health) ──
+// Sources: swgr.org wiki (familiars, heroic jewelry, buff items) — authoritative; backpacks from swgear.
+const FAMILIARS = [
+  { id:'none',        name:'None',                          stats:{} },
+  { id:'gackle',      name:'Gackle Bat — +40 Rng/Mel',      stats:{ range:40, melee:40 } },
+  { id:'nightspider', name:'Nightspider — +40 Endurance',   stats:{ endur:40 } },
+  { id:'mouse',       name:'Mouse Droid — +60 Toughness',   stats:{ tough:60 } },
+  { id:'tie',         name:'TIE-Fighter — +40 Defense',     stats:{ defen:40 } },
+  { id:'xwing',       name:'X-Wing — +40 Defense',          stats:{ defen:40 } },
+  { id:'ewok',        name:'Ewok — −2% aggro (no core)',    stats:{} },
+];
+
+const BACKPACKS = [
+  { id:'none',      name:'None',                                stats:{} },
+  { id:'kashykian', name:'Kashykian Bandolier — +15 all',       stats:{ melee:15,tough:15,endur:15,range:15,defen:15,luck:15 } },
+  { id:'ace',       name:'Imperial Ace Field Pack',             stats:{ defen:35,tough:25,luck:35,range:30,endur:25,melee:30 } },
+  { id:'tusken',    name:'Tusken King Backpack',                stats:{ defen:25,tough:30,luck:25,range:35,endur:30,melee:35 } },
+];
+
+// Heroic jewelry: each piece adds 30 of its stat; pieces 0–5 → up to 150. Heroism is the all-rounder.
+// Captivator/Thriller add no core stat. Non-Heroism set bonuses are abilities (not stats).
+const HEROIC_PER_PIECE = 30;
+const HEROIC_SETS = [
+  { id:'none',          name:'None',            stat:null },
+  { id:'heroism',       name:'Heroism (all)',   stat:'heroism' },
+  { id:'acrobat',       name:'Acrobat',         stat:'melee' },
+  { id:'assassin',      name:'Assassin',        stat:'range' },
+  { id:'bane',          name:'Bane',            stat:'luck'  },
+  { id:'blackbars',     name:"Blackbar's DOOM", stat:'endur' },
+  { id:'captivator',    name:'Captivator',      stat:null    },
+  { id:'direfate',      name:'Dire Fate',       stat:'range' },
+  { id:'duelist',       name:'Duelist',         stat:'defen' },
+  { id:'firstresponder',name:'First Responder', stat:'endur' },
+  { id:'flawless',      name:'Flawless',        stat:'tough' },
+  { id:'gambler',       name:'Gambler',         stat:'luck'  },
+  { id:'guardian',      name:'Guardian',        stat:'defen' },
+  { id:'gunslinger',    name:'Gunslinger',      stat:'range' },
+  { id:'hellfire',      name:'Hellfire',        stat:'luck'  },
+  { id:'juggernaut',    name:'Juggernaut',      stat:'luck'  },
+  { id:'manipulator',   name:'Manipulator',     stat:'range' },
+  { id:'pathologist',   name:'Pathologist',     stat:'endur' },
+  { id:'plaguespreader',name:'Plaguespreader',  stat:'endur' },
+  { id:'predator',      name:'Predator',        stat:'defen' },
+  { id:'pursuit',       name:'Pursuit',         stat:'melee' },
+  { id:'rampart',       name:'Rampart',         stat:'tough' },
+  { id:'razor',         name:'Razor',           stat:'melee' },
+  { id:'relentless',    name:'Relentless',      stat:'melee' },
+  { id:'sage',          name:'Sage',            stat:'tough' },
+  { id:'scoundrel',     name:'Scoundrel',       stat:'defen' },
+  { id:'slicer',        name:'Slicer',          stat:'luck'  },
+  { id:'soldier',       name:'Soldier',         stat:'range' },
+  { id:'strider',       name:'Strider',         stat:'luck'  },
+  { id:'symbiotic',     name:'Symbiotic',       stat:'luck'  },
+  { id:'templar',       name:'Templar',         stat:'melee' },
+  { id:'thriller',      name:'Thriller',        stat:null    },
+  { id:'tidstill',      name:'Tidstill',        stat:'melee' },
+  { id:'tinkerer',      name:'Tinkerer',        stat:'luck'  },
+  { id:'trapper',       name:'Trapper',         stat:'defen' },
+  { id:'veteran',       name:'Veteran',         stat:'endur' },
+];
+// Heroism scaling: per-piece 30 luck/range/melee, plus tiered set bonus at 3/4/5 pieces.
+function heroismStats(pieces){
+  const s = { luck:30*pieces, range:30*pieces, melee:30*pieces, endur:0, defen:0, tough:0 };
+  if (pieces>=5){ s.endur=150; s.defen=150; s.tough=150; }
+  else if (pieces>=4){ s.endur=90; s.defen=90; }
+  else if (pieces>=3){ s.endur=60; }
+  return s;
+}
+
+// Buff items — grouped; only ONE active per group (shared cooldown). hp = flat Health, hpPct = % Health.
+const BUFF_GROUPS = [
+  { id:'legendary', name:'Legendary buff (1 active)', options:[
+    { id:'none',        name:'None',                              stats:{} },
+    { id:'lair',        name:'Lair Crystal — +150 End',           stats:{ endur:150 } },
+    { id:'retaliation', name:'Shard of Retaliation — +150 Tough', stats:{ tough:150 } },
+    { id:'wampa',       name:'Wampa Arm — +150 Def',              stats:{ defen:150 } },
+    { id:'gorax',       name:'Gorax Ear — +150 Tough',            stats:{ tough:150 } },
+  ]},
+  { id:'epic', name:'Epic buff (1 active)', options:[
+    { id:'none',    name:'None',                                  stats:{} },
+    { id:'sith',    name:'Sith Holocron — −300 HP',               stats:{}, hp:-300 },
+    { id:'cooling', name:'Cooling Spray Unit — fire res (no core)',stats:{} },
+  ]},
+  { id:'rare', name:'Rare buff (1 active)', options:[
+    { id:'none',     name:'None',                                 stats:{} },
+    { id:'corsuca',  name:'Corsuca Gem — +200 Ranged',            stats:{ range:200 } },
+    { id:'sasho',    name:'Sasho Gem — +200 Melee, +10% HP',      stats:{ melee:200 }, hpPct:10 },
+    { id:'selonian', name:'Selonian PSG — +30 Def/+30 Tough',     stats:{ defen:30, tough:30 } },
+    { id:'vitacaps', name:'Nourishing Vita-Caps — +200 HP',       stats:{}, hp:200 },
+    { id:'wildoff',  name:'Wild Force Shard (Off) — +100 HP',     stats:{}, hp:100 },
+    { id:'ankarres', name:'Ankarres Sapphire — +15% HP',          stats:{}, hpPct:15 },
+    { id:'powerstone',name:'Power Stone — combat def (no core)',  stats:{} },
+  ]},
+  { id:'eternal', name:'Eternal buff (1 active, 100% uptime)', options:[
+    { id:'none',     name:'None',                                 stats:{} },
+    { id:'infrared', name:'Infrared Electrobinoculars — +10 Rng/+10 Mel', stats:{ range:10, melee:10 } },
+    { id:'injector', name:'Mustafarian Injector — bleed res (no core)',   stats:{} },
+    { id:'serpent',  name:'Shard of the Serpent — poison res (no core)',  stats:{} },
+  ]},
+];
+
+// Consumables (gearing guide). Only explicit core-attribute values feed totals;
+// accuracy/defense/dodge/regen/mitigation are shown as reference (non-core).
+const FOODS = [
+  // Always-on (hour-long)
+  { id:'tilla',       name:"T'illa Till — +209 Endurance (+40 rng acc)", cat:'Always-on (hour)', stats:{ endur:209 } },
+  { id:'parwan',      name:'Parwan Nutricake — +159 Toughness',          cat:'Always-on (hour)', stats:{ tough:159 } },
+  { id:'blob',        name:'Blob Candy — +192 action regen',             cat:'Always-on (hour)', stats:{} },
+  { id:'bofa',        name:'Bofa Treat — +192 health regen',             cat:'Always-on (hour)', stats:{} },
+  { id:'caf',         name:'Caf — +100 mind regen',                      cat:'Always-on (hour)', stats:{} },
+  // Pre-battle (15 minutes)
+  { id:'pikatta',     name:'Pikatta Pie — +56 dodge',                    cat:'Pre-battle (15m)', stats:{} },
+  { id:'aircake',     name:'Air Cake — +38 dodge',                       cat:'Pre-battle (15m)', stats:{} },
+  { id:'crispic_m',   name:'Crispic (melee) — +70/+32 acc',              cat:'Pre-battle (15m)', stats:{} },
+  { id:'crispic_r',   name:'Crispic (ranged) — +34/+40 acc',             cat:'Pre-battle (15m)', stats:{} },
+  { id:'vegeparsine', name:'Vegeparsine — +103 melee defense',           cat:'Pre-battle (15m)', stats:{} },
+  { id:'thundercloud',name:'Thundercloud — +104 ranged defense',         cat:'Pre-battle (15m)', stats:{} },
+  // Instant
+  { id:'ruby',        name:'Ruby Bliel — stimpack reset',                cat:'Instant',          stats:{} },
+  { id:'exo',         name:'Exo-Protein Wafers — +28.8 mitigation',      cat:'Instant',          stats:{} },
+  { id:'synthsteak',  name:'Synthsteak — +43.6 mitigation',              cat:'Instant',          stats:{} },
+  { id:'deuterium',   name:'Deuterium Pyro — +230 ranged acc',           cat:'Instant',          stats:{} },
+  { id:'corellian',   name:'Corellian Ale — +220 melee acc',             cat:'Instant',          stats:{} },
+  // Spice / Stim
+  { id:'booster',     name:'Booster Blue (spice) — 15m, then sickness',  cat:'Spice / Stim',     stats:{} },
+];
+
+// State ────────────────────────────────────────────────────────────
 function blankPiece(name){ return { name, lines:[{attr:'',amt:''},{attr:'',amt:''},{attr:'',amt:''}] }; }
 function defaultState(){
   return {
     jewelry: JEWELRY_SLOTS.map(blankPiece),
-    food:    Array.from({length:5},(_,i)=>blankPiece('Food / Buff '+(i+1))),
+    food:    Array.from({length:5},(_,i)=>blankPiece('Custom Buff '+(i+1))),
     armor:   ARMOR_SLOTS.map(blankPiece),
     armorMode:'auto',
+    familiar:'none',
+    backpack:'none',
+    heroic:{ set:'none', pieces:5 },
+    buffs:{ legendary:'none', epic:'none', rare:'none', eternal:'none' },
+    health:{ armor:'', augment:'' },
+    foodSel:{},
   };
 }
 let state = loadState();
 function loadState(){
-  try { const s = JSON.parse(localStorage.getItem(LS_KEY)); if (s && s.jewelry) return s; } catch(e){}
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_KEY));
+    if (s && s.jewelry){
+      // backfill fields added after this state was first saved
+      const d = defaultState();
+      if (!s.familiar) s.familiar = d.familiar;
+      if (!s.backpack) s.backpack = d.backpack;
+      if (!s.heroic)   s.heroic   = d.heroic;
+      if (!s.buffs)    s.buffs    = d.buffs;
+      if (!s.health)   s.health   = d.health;
+      if (!s.foodSel)  s.foodSel  = d.foodSel;
+      // migrate old default slot names → "Custom Buff N"
+      if (Array.isArray(s.food)) s.food.forEach((p,i)=>{ if (p && /^Food \/ Buff \d+$/.test(p.name)) p.name = 'Custom Buff '+(i+1); });
+      return s;
+    }
+  } catch(e){}
   return defaultState();
 }
 function saveState(){ try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch(e){} }
@@ -366,6 +556,50 @@ function setLine(zone,pi,li,field,val){
   saveState(); recalc();
 }
 
+// ── Familiar / Backpack / Heroic / Buff / Health selectors ───────────
+function opt(v,t,sel){ return `<option value="${v}"${String(v)===String(sel)?' selected':''}>${t}</option>`; }
+function renderSelectors(){
+  const fam=document.getElementById('sel-familiar');
+  if(fam) fam.innerHTML = FAMILIARS.map(x=>opt(x.id,x.name,state.familiar)).join('');
+  const bp=document.getElementById('sel-backpack');
+  if(bp) bp.innerHTML = BACKPACKS.map(x=>opt(x.id,x.name,state.backpack)).join('');
+  const hs=document.getElementById('sel-heroic');
+  if(hs) hs.innerHTML = HEROIC_SETS.map(x=>opt(x.id,x.name,state.heroic.set)).join('');
+  const hpc=document.getElementById('sel-heroic-pieces');
+  if(hpc) hpc.innerHTML = [0,1,2,3,4,5].map(n=>opt(String(n), n+' piece'+(n===1?'':'s'), String(state.heroic.pieces))).join('');
+  const bs=document.getElementById('buff-selects');
+  if(bs) bs.innerHTML = BUFF_GROUPS.map(g=>
+    `<label class="sel">${g.name}<select onchange="setBuff('${g.id}',this.value)">${g.options.map(o=>opt(o.id,o.name,(state.buffs&&state.buffs[g.id])||'none')).join('')}</select></label>`
+  ).join('');
+  const ha=document.getElementById('hp-armor');   if(ha) ha.value = state.health.armor||'';
+  const hg=document.getElementById('hp-augment');  if(hg) hg.value = state.health.augment||'';
+}
+function setSelector(key,val){ state[key]=val; saveState(); recalc(); }
+function setHeroic(field,val){ if(!state.heroic) state.heroic={set:'none',pieces:5}; state.heroic[field] = field==='pieces' ? (parseInt(val)||0) : val; saveState(); recalc(); }
+function setBuff(group,val){ if(!state.buffs) state.buffs={}; state.buffs[group]=val; saveState(); recalc(); }
+function setHealth(field,val){ if(!state.health) state.health={armor:'',augment:''}; state.health[field]=val; saveState(); recalc(); }
+
+// ── Food catalog ─────────────────────────────────────────────────────
+function renderFoodCatalog(){
+  const el=document.getElementById('food-catalog'); if(!el) return;
+  const cats=[]; FOODS.forEach(f=>{ if(!cats.includes(f.cat)) cats.push(f.cat); });
+  el.innerHTML = cats.map(cat=>`
+    <div class="foodcat">
+      <div class="foodcat-h">${cat}</div>
+      <div class="foodgrid">
+        ${FOODS.filter(f=>f.cat===cat).map(f=>{
+          const on = !!(state.foodSel && state.foodSel[f.id]);
+          const core = Object.keys(f.stats||{}).length>0;
+          return `<label class="fooditem${on?' on':''}">
+            <input type="checkbox" ${on?'checked':''} onchange="toggleFood('${f.id}',this.checked)">
+            <span>${f.name}${core?'':' <em class="nc">(non-core)</em>'}</span>
+          </label>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+}
+function toggleFood(id,on){ if(!state.foodSel) state.foodSel={}; if(on) state.foodSel[id]=true; else delete state.foodSel[id]; saveState(); recalc(); }
+
 // ── Armor mode ───────────────────────────────────────────────────────
 function setArmorMode(mode){
   state.armorMode = mode; saveState();
@@ -400,33 +634,89 @@ function armorTotals(){
   return sumZone(state.armor);
 }
 
+// ── Contribution helpers ─────────────────────────────────────────────
+function emptyCodes(){ return { melee:0,tough:0,endur:0,range:0,defen:0,luck:0 }; }
+function addStats(into, stats){ if(!stats) return; for(const k in stats){ if(k in into) into[k]+=Number(stats[k])||0; } }
+function familiarStats(){ const f=FAMILIARS.find(x=>x.id===state.familiar); return f?f.stats:{}; }
+function backpackStats(){ const b=BACKPACKS.find(x=>x.id===state.backpack); return b?b.stats:{}; }
+function heroicStats(){
+  const set=HEROIC_SETS.find(x=>x.id===(state.heroic&&state.heroic.set));
+  const pieces=Math.max(0,Math.min(5, parseInt(state.heroic&&state.heroic.pieces)||0));
+  if(!set||!set.stat||pieces===0) return {};
+  if(set.stat==='heroism') return heroismStats(pieces);
+  return { [set.stat]: HEROIC_PER_PIECE*pieces };
+}
+function buffStats(){
+  const t=emptyCodes(); let hp=0, hpPct=0;
+  BUFF_GROUPS.forEach(g=>{
+    const pick=(state.buffs&&state.buffs[g.id])||'none';
+    const opt=g.options.find(o=>o.id===pick);
+    if(opt){ addStats(t,opt.stats); hp+=opt.hp||0; hpPct+=opt.hpPct||0; }
+  });
+  return { codes:t, hp, hpPct };
+}
+function foodStats(){
+  const t=emptyCodes();
+  if(state.foodSel) FOODS.forEach(f=>{ if(state.foodSel[f.id]) addStats(t, f.stats); });
+  return t;
+}
+// Non-SEA baseline = every source except armor/SEAs
+function baselineTotals(){
+  const t=emptyCodes();
+  addStats(t, sumZone(state.jewelry));
+  addStats(t, sumZone(state.food));   // custom manual entries
+  addStats(t, foodStats());           // catalog selections
+  addStats(t, familiarStats());
+  addStats(t, backpackStats());
+  addStats(t, heroicStats());
+  addStats(t, buffStats().codes);
+  return t;
+}
+function healthTotal(){
+  const armor=Number(state.health&&state.health.armor)||0;
+  const augment=Number(state.health&&state.health.augment)||0;
+  const b=buffStats();
+  let hp = armor+augment+b.hp;
+  if(b.hpPct) hp = Math.round(hp*(1+b.hpPct/100));
+  return hp;
+}
+
 // ── Results ──────────────────────────────────────────────────────────
 function recalc(){
-  const j = sumZone(state.jewelry);
-  const f = sumZone(state.food);
-  const a = armorTotals();
+  const base = baselineTotals();
+  const sea  = armorTotals();
   const body = document.getElementById('results-body');
-  body.innerHTML = ATTRS.map(attr=>{
-    const total = (j[attr.code]||0)+(f[attr.code]||0)+(a[attr.code]||0);
+  let html = ATTRS.map(attr=>{
+    const nb = base[attr.code]||0;
+    const sv = sea[attr.code]||0;
+    const total = nb+sv;
     const eff = effective(total);
     const lost = total - eff;
     const effClass = total>250 ? 'capped' : (total>0?'full':'');
-    let badge='', waste='';
-    if (total > 250){
-      badge = `<span class="badge warn">past soft cap</span>`;
-      if (lost>0) waste = `<div class="waste">−${lost} lost to diminishing returns</div>`;
-    } else if (total >= attr.goalLow && total <= attr.goalHigh){
-      badge = `<span class="badge ok">in goal range</span>`;
-    } else if (total>0 && total < attr.goalLow){
-      badge = `<span class="badge under">below goal</span>`;
-    }
+    const room = 250 - nb;                 // SEA headroom before the soft cap
+    let advice;
+    if (nb >= 250)      advice = `<span class="badge warn">capped by buffs — skip SEAs here</span>`;
+    else if (room <= 35) advice = `<span class="badge warn">~${room} to soft cap — ≤1 SEA</span>`;
+    else                 advice = `<span class="badge ok">${room} room for SEAs</span>`;
+    const waste = (total>250 && lost>0) ? `<div class="waste">−${lost} lost to diminishing returns</div>` : '';
     return `<tr>
       <td class="aname">${attr.name}</td>
+      <td class="r">${nb}</td>
+      <td class="r">${sv}</td>
       <td class="r"><span class="atotal">${total}</span></td>
       <td class="r"><span class="aeff ${effClass}">${eff}</span></td>
-      <td><span class="goal">${attr.goal}</span>${badge}${waste}</td>
+      <td><span class="goal">${attr.goal}</span> ${advice}${waste}</td>
     </tr>`;
   }).join('');
+  const hp = healthTotal();
+  html += `<tr class="hprow">
+      <td class="aname">Health (HP)</td>
+      <td class="r">${hp}</td><td class="r">—</td>
+      <td class="r"><span class="atotal">${hp}</span></td>
+      <td class="r">—</td>
+      <td><span class="goal">no soft cap / DR</span></td>
+    </tr>`;
+  body.innerHTML = html;
 }
 
 // ── Quick add foods ──────────────────────────────────────────────────
@@ -446,19 +736,87 @@ function quickAddFood(i){
 
 // ── Copy summary ─────────────────────────────────────────────────────
 function copySummary(){
-  const j=sumZone(state.jewelry), f=sumZone(state.food), a=armorTotals();
+  const base=baselineTotals(), sea=armorTotals();
   const lines = ['═══ ATTRIBUTE PLAN ═══'];
   ATTRS.forEach(attr=>{
-    const total=(j[attr.code]||0)+(f[attr.code]||0)+(a[attr.code]||0);
-    lines.push(`${attr.name.padEnd(18)} total ${String(total).padStart(4)}  →  effective ${effective(total)}`);
+    const nb=base[attr.code]||0, sv=sea[attr.code]||0, total=nb+sv, room=250-nb;
+    const flag = nb>=250 ? '[capped — skip SEAs]' : (room<=35 ? `[~${room} to cap]` : `[${room} SEA room]`);
+    lines.push(`${attr.name.padEnd(17)} non-SEA ${String(nb).padStart(4)}  SEA ${String(sv).padStart(3)}  total ${String(total).padStart(4)}  eff ${String(effective(total)).padStart(4)}  ${flag}`);
   });
+  lines.push(`${'Health (HP)'.padEnd(17)} ${String(healthTotal()).padStart(4)}`);
   const text = lines.join('\n');
   navigator.clipboard.writeText(text).then(()=>toast('Summary copied'),()=>toast('Copy failed'));
 }
 
 function resetAll(){
-  if (!confirm('Reset the planner? This clears jewelry, food, and manual armor entries.')) return;
+  if (!confirm('Reset the entire planner? This clears jewelry, gear/buffs, food, and armor entries.')) return;
   state = defaultState(); saveState(); initRender(); toast('Planner reset');
+}
+function resetSection(which){
+  const d = defaultState();
+  if (which==='jewelry'){
+    state.jewelry = d.jewelry; renderZone('jewelry-cards','jewelry');
+  } else if (which==='gear'){
+    state.familiar=d.familiar; state.backpack=d.backpack; state.heroic=d.heroic;
+    state.buffs=d.buffs; state.health=d.health; renderSelectors();
+  } else if (which==='food'){
+    state.food=d.food; state.foodSel=d.foodSel;
+    renderZone('food-cards','food'); renderFoodCatalog();
+  } else if (which==='armor'){
+    state.armor=d.armor; state.armorMode=d.armorMode;
+    renderZone('armor-manual','armor'); setArmorMode(state.armorMode); // also re-renders import + recalc
+  }
+  saveState(); recalc();
+  toast('Section reset');
+}
+function toggleSection(el){ const p=el.closest('.panel'); if(p) p.classList.toggle('collapsed'); }
+
+// ── Save / Load planner to a file (mirrors the SEA order export) ─────
+function exportPlanner(){
+  const enc = btoa(unescape(encodeURIComponent(JSON.stringify({ kind:'blueshift-attributes', v:1, state:state }))));
+  if (IS_DESKTOP && window.electronAPI && window.electronAPI.saveExport){
+    window.electronAPI.saveExport(enc).then(res=>{
+      if (res && res.ok) toast('Attributes saved'); else if (res && res.error) toast('Save failed: '+res.error);
+    }).catch(()=>toast('Save failed'));
+  } else {
+    const blob=new Blob([enc],{type:'text/plain'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='blueshift-attributes.bsattr';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    toast('Attributes file downloaded');
+  }
+}
+function applyImported(str){
+  let payload;
+  try { payload = JSON.parse(decodeURIComponent(escape(atob(String(str).trim())))); }
+  catch(e){ try { payload = JSON.parse(String(str)); } catch(e2){ toast('Invalid attributes file'); return; } }
+  const incoming = (payload && payload.kind==='blueshift-attributes' && payload.state) ? payload.state
+                 : (payload && payload.jewelry ? payload : null);
+  if (!incoming || !incoming.jewelry){ toast('Not a valid attributes file'); return; }
+  const d = defaultState();
+  state = Object.assign(d, incoming);
+  if (!state.heroic)  state.heroic  = d.heroic;
+  if (!state.buffs)   state.buffs   = d.buffs;
+  if (!state.health)  state.health  = d.health;
+  if (!state.foodSel) state.foodSel = d.foodSel;
+  saveState(); initRender(); toast('Attributes loaded');
+}
+function importPlanner(){
+  if (IS_DESKTOP && window.electronAPI && window.electronAPI.openExport){
+    window.electronAPI.openExport().then(res=>{
+      if (res && res.ok && res.content) applyImported(res.content);
+      else if (res && res.error) toast('Open failed: '+res.error);
+    }).catch(()=>toast('Open failed'));
+  } else {
+    const inp=document.getElementById('planner-file'); if(inp) inp.click();
+  }
+}
+function handlePlannerFile(inp){
+  const f=inp.files && inp.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ applyImported(String(r.result)); inp.value=''; };
+  r.readAsText(f);
 }
 
 // ── Navigation ───────────────────────────────────────────────────────
@@ -493,7 +851,8 @@ function initRender(){
   renderZone('jewelry-cards','jewelry');
   renderZone('food-cards','food');
   renderZone('armor-manual','armor');
-  renderQuickAdd();
+  renderFoodCatalog();
+  renderSelectors();
   renderRefs();
   setArmorMode(state.armorMode || 'auto'); // also renders import + recalc
 }

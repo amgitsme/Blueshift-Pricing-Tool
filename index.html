@@ -1124,6 +1124,30 @@ function applyDiscountCode() {
     return;
   }
 
+  // Date range check
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  if (match.startDate) {
+    const start = new Date(match.startDate);
+    if (now < start) {
+      msg.textContent = `This code is not active yet (starts ${start.toLocaleDateString()}).`;
+      msg.style.color = 'var(--red)';
+      state.appliedCode = null;
+      renderPriceSheet();
+      return;
+    }
+  }
+  if (match.endDate) {
+    const end = new Date(match.endDate);
+    if (now > end) {
+      msg.textContent = 'This discount code has expired.';
+      msg.style.color = 'var(--red)';
+      state.appliedCode = null;
+      renderPriceSheet();
+      return;
+    }
+  }
+
   state.appliedCode = { code, pct: match.pct };
   msg.textContent = `✓ Code "${code}" applied — ${match.pct}% off!`;
   msg.style.color = 'var(--accent2)';
@@ -1683,11 +1707,14 @@ function buildOrderPayload() {
     e2: sea.enhance2 || null,
     e3: sea.enhance3 || null,
   });
+  const ignEl = document.getElementById('ign-input');
   return {
     v:        1,
     standard: state.standard.map(toRow),
     exotic:   state.exotic.map(toRow),
     disc:     state.discount,
+    discCode: state.appliedCode ? state.appliedCode.code : null,
+    ign:      ignEl ? (ignEl.value.trim() || null) : null,
     ts:       Date.now(),
   };
 }
