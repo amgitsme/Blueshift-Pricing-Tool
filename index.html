@@ -1087,10 +1087,6 @@ function setSeaType(group, idx, type) {
 
 function setDiscount(type) {
   state.discount = type;
-  const yes = document.getElementById('disc-btn-yes');
-  const no  = document.getElementById('disc-btn-no');
-  if (yes) yes.className = 'toggle-btn' + (type==='bcc' ? ' active-yes' : '');
-  if (no)  no.className  = 'toggle-btn' + (type==='none'? ' active-no'  : '');
   renderPriceSheet();
 }
 
@@ -1733,8 +1729,36 @@ function applyOrderPayload(payload) {
   };
   applyRows(payload.standard || [], 'standard');
   applyRows(payload.exotic   || [], 'exotic');
-  renderSEAGrid();
+
+  // Restore BCC discount (admin-controlled; only apply if cfg still has it enabled)
   if (payload.disc !== undefined) setDiscount(payload.disc);
+
+  // Restore discount code
+  const codeInput = document.getElementById('discount-code-input');
+  const codeMsg   = document.getElementById('discount-code-msg');
+  if (payload.discCode) {
+    const codes = (cfg && cfg.discountCodes) ? cfg.discountCodes : {};
+    const match = codes[payload.discCode];
+    if (match) {
+      state.appliedCode = { code: payload.discCode, pct: match.pct };
+      if (codeInput) codeInput.value = payload.discCode;
+      if (codeMsg) {
+        codeMsg.textContent = `✓ Code "${payload.discCode}" applied — ${match.pct}% off!`;
+        codeMsg.style.color = 'var(--accent2)';
+      }
+    } else {
+      // Code no longer exists in cfg — clear it
+      state.appliedCode = null;
+      if (codeInput) codeInput.value = '';
+      if (codeMsg)   codeMsg.textContent = '';
+    }
+  } else {
+    state.appliedCode = null;
+    if (codeInput) codeInput.value = '';
+    if (codeMsg)   codeMsg.textContent = '';
+  }
+
+  renderSEAGrid();
   renderPriceSheet();
 }
 
