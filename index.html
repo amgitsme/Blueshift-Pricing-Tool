@@ -1647,6 +1647,46 @@ function advisorCombined(){
   const exoAll=[]; driving.forEach(p => (p.exotics||[]).forEach(m => { if(m && !exoAll.includes(m)) exoAll.push(m); }));
   return { reg, exo: exoAll.slice(0,3), sel, driving, overridden };
 }
+// Physical SEA slot layouts (where the 9 regular + 3 exotic tapes go), per build type.
+// Source: swgr.org gearing_guide + advanced_crafting_gear + jedi_equipment.
+const SEA_LAYOUTS = {
+  combat: { label:'combat armor suit',
+    regular:[['Helmet','armor'],['Left Bicep','armor'],['Right Bicep','armor'],['Left Bracer','armor'],['Right Bracer','armor'],['Gloves','armor'],['Leggings','armor'],['Boots','armor'],['Belt / PSG','accessory']],
+    exotic:['Weapon','Chest plate','Shirt'] },
+  crafter: { label:'low-encumbrance armor suit',
+    regular:[['Helmet','armor'],['Left Bicep','armor'],['Right Bicep','armor'],['Left Bracer','armor'],['Right Bracer','armor'],['Gloves','armor'],['Boots','armor'],['Pants','clothing'],['Belt / PSG','accessory']],
+    exotic:['Weapon','Breastplate','Shirt'],
+    note:'Wear low-encumbrance socketed armor. Avoid Ubese armor — its chest absorbs the bicep slots. The Cybernetic Deconstruction Arm replaces Right Bracer + Right Bicep with one item (+110 Opportune, +5 RE Chance). Maxed +35 Opportune on all 9 regulars ≈ +420 Opportune Chance.' },
+  jedi: { label:'robes + cloak (no armor)',
+    regular:[['Helmet','armor'],['Gloves','armor']],
+    exotic:['Lightsaber','Jedi Cloak','Shirt'],
+    note:'Jedi have only 2 regular SEA slots — robes occupy the rest. Belt of Master Bodo Baas has no socket but grants +50 Toughness / Opportune / Ranged / Melee.' }
+};
+function advisorSlotLayout(driving){
+  if (driving.some(p => p.grp === 'Force User')) return SEA_LAYOUTS.jedi;
+  if (driving.length && driving.every(p => p.grp === 'Crafter')) return SEA_LAYOUTS.crafter;
+  return SEA_LAYOUTS.combat;
+}
+function advisorSlotChips(slots, wantArmor, color){
+  const f = slots.filter(s => wantArmor ? s[1] === 'armor' : s[1] !== 'armor');
+  return f.map(s => `<span style="display:inline-block;font-size:10.5px;padding:2px 7px;margin:2px 3px 0 0;border:1px solid var(--border);border-radius:4px;color:${color};background:rgba(0,0,0,0.2);">${s[0]}</span>`).join('');
+}
+function advisorSlotMapHTML(driving, reg, exo){
+  const L = advisorSlotLayout(driving);
+  const regTxt = reg.length ? advisorList(reg) : '—';
+  const exoTxt = exo.length ? advisorList(exo) : '<span style="color:var(--text-dim)">weapon-specific — see notes</span>';
+  const armorChips = advisorSlotChips(L.regular, true, 'var(--accent3)');
+  const clothChips = advisorSlotChips(L.regular, false, 'var(--gold)');
+  const armorCount = L.regular.filter(s=>s[1]==='armor').length;
+  const clothCount = L.regular.length - armorCount;
+  return `<div style="font-size:11.5px;line-height:1.6;margin-bottom:6px;">
+    <div style="margin-bottom:3px;"><strong style="color:var(--accent);">Regular SEAs ×${L.regular.length}</strong> <span style="color:var(--text-dim);">— ${L.label}; each: ${regTxt}</span></div>
+    ${armorChips?`<div style="margin-bottom:2px;"><span style="color:var(--text-dim);font-size:10px;">Armor (${armorCount}):</span> ${armorChips}</div>`:''}
+    ${clothChips?`<div style="margin-bottom:4px;"><span style="color:var(--text-dim);font-size:10px;">Clothing / accessory (${clothCount}):</span> ${clothChips}</div>`:''}
+    <div style="margin-top:4px;"><strong style="color:var(--accent3);">Exotic SEAs ×${L.exotic.length}</strong> <span style="color:var(--text-dim);">(slots: ${L.exotic.join(' / ')}); each: ${exoTxt}</span></div>
+    ${L.note?`<div style="margin-top:4px;font-size:10.5px;color:var(--gold);">${L.note}</div>`:''}
+  </div>`;
+}
 function openAdvisor() {
   renderAdvisorProfs();
   renderAdvisorPreview();
@@ -1721,10 +1761,7 @@ function renderAdvisorPreview() {
   if (driving.length) {
     html += `<div style="font-family:'Orbitron',sans-serif;letter-spacing:1px;color:var(--accent2);margin-bottom:6px;">Combined loadout — ${driving.map(p=>p.name).join(' + ')}</div>
       ${overridden.length ? `<div style="font-size:11px;color:var(--gold);margin-bottom:6px;">▹ Melee build takes priority — ${overridden.map(p=>p.name).join(', ')} not driving the SEA loadout.</div>` : ''}
-      <div style="font-size:12px;line-height:1.7;margin-bottom:6px;">
-        <div><strong style="color:var(--accent);">Regular SEAs ×9:</strong> ${advisorList(reg)}</div>
-        <div><strong style="color:var(--accent3);">Exotic SEAs (all 3 exotic slots):</strong> ${exo.length?advisorList(exo):'<span style="color:var(--text-dim)">weapon-specific — see per-profession notes</span>'}</div>
-      </div>`;
+      ${advisorSlotMapHTML(driving, reg, exo)}`;
   }
   html += sel.map(p => {
     const g = p.g || {};
