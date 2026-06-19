@@ -306,17 +306,25 @@
 
   .copy-output { flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text-dim);font-family:'Share Tech Mono',monospace;font-size:13px;padding:8px 10px;border-radius:2px;resize:none;min-height:80px; }
 
-  /* Customer name field */
+  /* Customer name / Discord fields */
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%,60%{transform:translateX(-5px)}
+    40%,80%{transform:translateX(5px)}
+  }
+  .shake { animation:shake 0.35s ease; }
   .ign-row {
     display: flex;
-    align-items: center;
-    gap: 10px;
+    flex-direction: column;
+    gap: 8px;
     padding: 8px 10px;
     background: rgba(0,207,255,0.04);
     border: 1px solid var(--border);
     border-radius: 3px;
   }
+  .ign-field { display:flex;align-items:center;gap:10px; }
   .ign-label { font-size:11px;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;white-space:nowrap; }
+  .ign-required { color:var(--red);margin-left:2px; }
   .ign-input {
     flex: 1;
     background: var(--bg);
@@ -598,8 +606,14 @@
       <!-- CONTROLS BAR -->
       <div class="controls-bar">
         <div class="ign-row">
-          <span class="ign-label">Your IGN</span>
-          <input class="ign-input" id="ign-input" type="text" placeholder="Enter your in-game name..." maxlength="60">
+          <div class="ign-field">
+            <span class="ign-label">Discord Tag<span class="ign-required">*</span></span>
+            <input class="ign-input" id="discord-input" type="text" placeholder="username or user#1234" maxlength="100">
+          </div>
+          <div class="ign-field">
+            <span class="ign-label">Your IGN</span>
+            <input class="ign-input" id="ign-input" type="text" placeholder="Enter your in-game name..." maxlength="60">
+          </div>
         </div>
         <div class="controls-top">
           <div class="controls-left">
@@ -1178,10 +1192,14 @@ function resetAll() {
   state.exotic   = EXOTIC_SEAS.map(es=>({ power:null, type:es.type, enhance1:'', enhance2:'', enhance3:'' }));
   state.discount    = (cfg && cfg.discountEnabled && cfg.bccDiscount > 0) ? 'bcc' : 'none';
   state.appliedCode = null;
-  const codeInput = document.getElementById('discount-code-input');
-  const codeMsg   = document.getElementById('discount-code-msg');
-  if (codeInput) codeInput.value = '';
-  if (codeMsg)   codeMsg.textContent = '';
+  const codeInput    = document.getElementById('discount-code-input');
+  const codeMsg      = document.getElementById('discount-code-msg');
+  const ignInput     = document.getElementById('ign-input');
+  const discordInput = document.getElementById('discord-input');
+  if (codeInput)    codeInput.value      = '';
+  if (codeMsg)      codeMsg.textContent  = '';
+  if (ignInput)     ignInput.value       = '';
+  if (discordInput) discordInput.value   = '';
   renderSEAGrid();
   renderPriceSheet();
   populateBulkSelects();
@@ -1395,7 +1413,10 @@ function renderRunningStats() {
 // ═══════════════════════════════════════════════════════════════════
 function buildOrderSummary() {
   const ign = document.getElementById('ign-input').value.trim();
+  const discordEl = document.getElementById('discord-input');
+  const discordId = discordEl ? discordEl.value.trim() : '';
   const lines = ['═══ BLUESHIFT SEA ORDER ═══'];
+  if (discordId) lines.push(`Discord: ${discordId}`);
   if (ign) lines.push(`Customer: ${ign}`);
 
   const allSeas = [
@@ -1758,15 +1779,17 @@ function buildOrderPayload() {
     e2: sea.enhance2 || null,
     e3: sea.enhance3 || null,
   });
-  const ignEl = document.getElementById('ign-input');
+  const ignEl     = document.getElementById('ign-input');
+  const discordEl = document.getElementById('discord-input');
   return {
-    v:        1,
-    standard: state.standard.map(toRow),
-    exotic:   state.exotic.map(toRow),
-    disc:     state.discount,
-    discCode: state.appliedCode ? state.appliedCode.code : null,
-    ign:      ignEl ? (ignEl.value.trim() || null) : null,
-    ts:       Date.now(),
+    v:         1,
+    standard:  state.standard.map(toRow),
+    exotic:    state.exotic.map(toRow),
+    disc:      state.discount,
+    discCode:  state.appliedCode ? state.appliedCode.code : null,
+    ign:       ignEl     ? (ignEl.value.trim()     || null) : null,
+    discordId: discordEl ? (discordEl.value.trim() || null) : null,
+    ts:        Date.now(),
   };
 }
 
@@ -1812,6 +1835,12 @@ function applyOrderPayload(payload) {
     if (codeInput) codeInput.value = '';
     if (codeMsg)   codeMsg.textContent = '';
   }
+
+  // Restore IGN and Discord
+  const ignInput     = document.getElementById('ign-input');
+  const discordInput = document.getElementById('discord-input');
+  if (ignInput)     ignInput.value     = payload.ign       || '';
+  if (discordInput) discordInput.value = payload.discordId || '';
 
   renderSEAGrid();
   renderPriceSheet();
@@ -1864,6 +1893,13 @@ function handleLoadOrderFile(event) {
 // SUBMIT TO DISCORD
 // ═══════════════════════════════════════════════════════════════════
 async function submitOrder() {
+  const discordEl = document.getElementById('discord-input');
+  const discordId = discordEl ? discordEl.value.trim() : '';
+  if (!discordId) {
+    showToast('Please enter your Discord tag — it\'s required.', true);
+    if (discordEl) { discordEl.classList.add('shake'); discordEl.focus(); setTimeout(()=>discordEl.classList.remove('shake'), 400); }
+    return;
+  }
   const ign = document.getElementById('ign-input').value.trim();
   if (!ign) { showToast('Please enter your in-game name first.', true); return; }
 
@@ -1891,7 +1927,7 @@ async function submitOrder() {
       body: JSON.stringify({
         content: content,
         embeds: [{
-          title: '📦 New SEA Order — ' + ign,
+          title: '📦 New SEA Order — ' + ign + ' | ' + discordId,
           description: desc,
           color: 0x00cfff,
           footer: { text: 'Blueshift SEA Order Form' },
