@@ -2020,11 +2020,7 @@ async function init() {
     document.getElementById('app').style.display = 'block';
     document.getElementById('header-status').textContent = 'SYSTEM ONLINE';
 
-    // Restore persisted SEA configuration (survives navigation; cleared only on Reset)
-    try {
-      const _s = JSON.parse(localStorage.getItem('blueshift-order-state'));
-      if (_s && Array.isArray(_s.standard) && Array.isArray(_s.exotic)) { state.standard = _s.standard; state.exotic = _s.exotic; }
-    } catch(e){}
+    // Always start fresh — no persisted state restored on load
     populateBulkSelects();
     populateEnhancerSelects();
     renderPresetDropdown();
