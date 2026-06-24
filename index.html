@@ -88,6 +88,7 @@
   .main-grid {
     display: grid;
     grid-template-columns: var(--left-w,400px) 6px 1fr;
+    grid-template-rows: minmax(0, 1fr);
     gap: 0;
     height: calc(100vh - 52px);
   }
@@ -96,7 +97,7 @@
   .v-gutter { background:var(--border); cursor:col-resize; position:relative; z-index:6; }
   .v-gutter::after { content:''; position:absolute; left:-3px; right:-3px; top:0; bottom:0; }
   .v-gutter:hover, .v-gutter.dragging { background:var(--accent); }
-  .h-gutter { height:6px; background:var(--border); cursor:row-resize; flex:0 0 auto; position:relative; }
+  .h-gutter { display:none; height:6px; background:var(--border); cursor:row-resize; flex:0 0 auto; position:relative; }
   .h-gutter::after { content:''; position:absolute; top:-3px; bottom:-3px; left:0; right:0; }
   .h-gutter:hover, .h-gutter.dragging { background:var(--accent); }
   body.resizing-v, body.resizing-v * { cursor:col-resize !important; user-select:none; }
@@ -194,7 +195,7 @@
 
   /* ── CONFIG PANEL (right) ── */
   .config-panel { background:var(--panel2);display:flex;flex-direction:column;overflow:hidden; }
-  .config-scroll { flex:1 1 auto;overflow-y:auto;padding:12px;min-height:80px; }
+  .config-scroll { flex:1 1 auto;min-width:0;overflow-y:auto;padding:12px; }
   .config-scroll::-webkit-scrollbar { width:4px; }
   .config-scroll::-webkit-scrollbar-track { background:var(--bg); }
   .config-scroll::-webkit-scrollbar-thumb { background:var(--border-bright); }
@@ -254,7 +255,29 @@
   .bulk-clear:hover { background:rgba(255,68,85,0.1); }
 
   /* ENHANCER PANEL */
-  .enhancer-panel { border-bottom:1px solid var(--border);padding:10px 12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;background:rgba(0,0,0,0.15); }
+  /* Work area: modifier rail (left) + cards (right) */
+  .config-main { display:flex;flex:0 1 auto;min-height:0;overflow:hidden; }
+  /* Modifier rail (3 slots stacked) */
+  .enhancer-panel { flex:0 0 248px;border-right:1px solid var(--border);padding:10px 12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto;background:rgba(0,0,0,0.15); }
+  .enh-panel-bar { display:flex;flex-direction:column;align-items:stretch;gap:8px;padding-bottom:8px;margin-bottom:2px;border-bottom:1px solid var(--border); }
+  .enh-panel-title { font-family:'Orbitron',sans-serif;font-size:11px;font-weight:600;letter-spacing:3px;color:var(--accent); }
+  .enh-mode { display:flex;align-items:center;gap:6px;flex-wrap:wrap; }
+  .enh-mode-label { font-size:10px;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase; }
+  .enh-mode-btn { font-family:'Share Tech Mono',monospace;font-size:10px;padding:3px 9px;border:1px solid var(--border);background:transparent;color:var(--text-dim);cursor:pointer; }
+  .enh-mode-btn[data-mode="overwrite"] { border-radius:2px 0 0 2px; }
+  .enh-mode-btn[data-mode="empty"] { border-radius:0 2px 2px 0;border-left:none; }
+  .enh-mode-btn.active { background:rgba(0,207,255,0.15);color:var(--accent);border-color:rgba(0,207,255,0.45); }
+  .enh-applyall-btn { font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;padding:5px 12px;border:1px solid var(--accent2);background:rgba(0,255,157,0.08);color:var(--accent2);border-radius:2px;cursor:pointer; }
+  .enh-applyall-btn:hover { background:rgba(0,255,157,0.16); }
+  .enh-scope-row { display:flex;margin-bottom:7px; }
+  .enh-scope-btn { flex:1;font-family:'Share Tech Mono',monospace;font-size:10px;padding:3px 0;border:1px solid var(--border);border-left:none;background:transparent;color:var(--text-dim);cursor:pointer;transition:all 0.12s; }
+  .enh-scope-btn:first-child { border-left:1px solid var(--border);border-radius:2px 0 0 2px; }
+  .enh-scope-btn:last-child { border-radius:0 2px 2px 0; }
+  .enh-scope-btn.active { background:rgba(0,207,255,0.15);color:var(--accent);border-color:rgba(0,207,255,0.45); }
+  .enh-scope-btn:hover { color:var(--accent); }
+  .bulk-divider { width:1px;align-self:stretch;background:var(--border);margin:0 3px; }
+  .exotic-item-badge { font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;padding:2px 8px;border-radius:2px;border:1px solid var(--border);text-transform:uppercase;white-space:nowrap; }
+  .exotic-item-badge.active-armor,.exotic-item-badge.active-weapon,.exotic-item-badge.active-clothing { border-color:rgba(255,107,53,0.6);color:var(--accent3);background:rgba(255,107,53,0.08); }
   .enh-box { background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden;transition:border-color 0.2s; }
   .enh-box.has-mod { border-color:rgba(0,207,255,0.4); }
   .enh-box-header { background:linear-gradient(90deg,rgba(0,207,255,0.08),transparent);border-bottom:1px solid var(--border);padding:5px 10px;display:flex;align-items:center;gap:6px; }
@@ -286,7 +309,7 @@
   .exotic-sep-label { font-family:'Orbitron',sans-serif;font-size:11px;color:var(--accent3);letter-spacing:4px;text-shadow:0 0 8px rgba(255,107,53,0.4); }
 
   /* ── CONTROLS BAR ── */
-  .controls-bar { background:var(--panel);border-top:1px solid var(--border);padding:12px 12px;display:flex;flex-direction:column;gap:10px;height:var(--out-h,210px);min-height:150px;flex:0 0 auto;overflow:auto; }
+  .controls-bar { background:var(--panel);border-top:1px solid var(--border);padding:12px 12px;display:flex;flex-direction:column;gap:10px;min-height:150px;flex:1 1 auto;overflow:auto; }
   .controls-top { display:flex;gap:9px;align-items:flex-start; }
   .controls-left { display:flex;flex-direction:column;gap:7px; }
 
@@ -366,10 +389,11 @@
   .qmod-sep { border-top:1px solid var(--border);margin:2px 0; }
 
   @media (max-width:900px) {
-    .main-grid { grid-template-columns:1fr;height:auto; }
+    .main-grid { grid-template-columns:1fr;grid-template-rows:none;height:auto; }
     .price-panel { border-right:none;border-bottom:1px solid var(--border);max-height:50vh; }
     .sea-grid { grid-template-columns:1fr; }
-    .enhancer-panel { grid-template-columns:1fr; }
+    .config-main { flex-direction:column;overflow:visible; }
+    .enhancer-panel { flex-basis:auto;border-right:none;border-bottom:1px solid var(--border); }
     .v-gutter, .h-gutter { display:none; }
     .controls-bar { height:auto; }
   }
@@ -509,8 +533,23 @@
 
       <!-- POWER BULK BAR -->
       <div class="bulk-bar">
+        <!-- YOUR SETUP: suit + fill-from -->
         <div class="bulk-group">
-          <span class="bulk-label">Power Bit</span>
+          <span class="bulk-label">Suit</span>
+          <select class="bulk-select" id="suit-select" onchange="setSuit(this.value)" title="Sets the gear type for all 9 standard SEAs (override individual cards below)">
+            <option value="Armor">Armor</option>
+            <option value="Clothing">Clothing</option>
+          </select>
+          <span class="bulk-divider"></span>
+          <span class="bulk-label">Fill from</span>
+          <button class="bulk-apply" onclick="openAdvisor()" title="Recommend stats from your professions" style="background:rgba(176,106,255,0.12);border-color:var(--admin,#b06aff);color:var(--admin,#b06aff);">🧭 Loadout Advisor</button>
+          <select class="bulk-select" id="preset-select" onchange="applyPreset(this.value)" title="Fill all SEAs &amp; Exotics from a preset">
+            <option value="">Load preset…</option>
+          </select>
+        </div>
+        <!-- POWER -->
+        <div class="bulk-group">
+          <span class="bulk-label">Power</span>
           <select class="bulk-select" id="bulk-power">
             <option value="">— select —</option>
           </select>
@@ -518,105 +557,32 @@
           <button class="bulk-apply" onclick="applyMax35()" style="background:rgba(255,198,66,0.1);border-color:var(--gold);color:var(--gold);">MAX POWER</button>
           <button class="bulk-clear" onclick="clearBulkPower()" title="Clear power on all SEAs">✕</button>
         </div>
-        <!-- LOAD PRESET -->
-        <div class="bulk-group" id="preset-group">
-          <span class="bulk-label">Load Preset</span>
-          <select class="bulk-select" id="preset-select" onchange="applyPreset(this.value)" title="Fill all SEAs &amp; Exotics from a preset">
-            <option value="">— select —</option>
-          </select>
-        </div>
-        <!-- BUILD ADVISOR -->
-        <div class="bulk-group">
-          <button class="bulk-apply" onclick="openAdvisor()" title="Recommend stats from your professions" style="background:rgba(176,106,255,0.12);border-color:var(--admin,#b06aff);color:var(--admin,#b06aff);">🧭 Loadout Advisor</button>
-        </div>
-        <!-- QUICK MODIFIER BUTTONS -->
-        <div class="qmod-wrap">
-          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Defense General ▾</button>
-          <div class="qmod-dropdown">
-            <button onclick="applyQuickMod('Defense General','standard','enhance1')">SEA Slot 1</button>
-            <button onclick="applyQuickMod('Defense General','standard','enhance2')">SEA Slot 2</button>
-            <button onclick="applyQuickMod('Defense General','standard','enhance3')">SEA Slot 3</button>
-            <div class="qmod-sep"></div>
-            <button onclick="applyQuickMod('Defense General','exotic','enhance1')">Exotic Slot 1</button>
-            <button onclick="applyQuickMod('Defense General','exotic','enhance2')">Exotic Slot 2</button>
-            <button onclick="applyQuickMod('Defense General','exotic','enhance3')">Exotic Slot 3</button>
-          </div>
-        </div>
-        <div class="qmod-wrap">
-          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Melee General ▾</button>
-          <div class="qmod-dropdown">
-            <button onclick="applyQuickMod('Melee General','standard','enhance1')">SEA Slot 1</button>
-            <button onclick="applyQuickMod('Melee General','standard','enhance2')">SEA Slot 2</button>
-            <button onclick="applyQuickMod('Melee General','standard','enhance3')">SEA Slot 3</button>
-            <div class="qmod-sep"></div>
-            <button onclick="applyQuickMod('Melee General','exotic','enhance1')">Exotic Slot 1</button>
-            <button onclick="applyQuickMod('Melee General','exotic','enhance2')">Exotic Slot 2</button>
-            <button onclick="applyQuickMod('Melee General','exotic','enhance3')">Exotic Slot 3</button>
-          </div>
-        </div>
-        <div class="qmod-wrap">
-          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Ranged General ▾</button>
-          <div class="qmod-dropdown">
-            <button onclick="applyQuickMod('Ranged General','standard','enhance1')">SEA Slot 1</button>
-            <button onclick="applyQuickMod('Ranged General','standard','enhance2')">SEA Slot 2</button>
-            <button onclick="applyQuickMod('Ranged General','standard','enhance3')">SEA Slot 3</button>
-            <div class="qmod-sep"></div>
-            <button onclick="applyQuickMod('Ranged General','exotic','enhance1')">Exotic Slot 1</button>
-            <button onclick="applyQuickMod('Ranged General','exotic','enhance2')">Exotic Slot 2</button>
-            <button onclick="applyQuickMod('Ranged General','exotic','enhance3')">Exotic Slot 3</button>
-          </div>
-        </div>
-        <div class="qmod-wrap">
-          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Opportune Chance ▾</button>
-          <div class="qmod-dropdown">
-            <button onclick="applyQuickMod('Opportune Chance','standard','enhance1')">SEA Slot 1</button>
-            <button onclick="applyQuickMod('Opportune Chance','standard','enhance2')">SEA Slot 2</button>
-            <button onclick="applyQuickMod('Opportune Chance','standard','enhance3')">SEA Slot 3</button>
-            <div class="qmod-sep"></div>
-            <button onclick="applyQuickMod('Opportune Chance','exotic','enhance1')">Exotic Slot 1</button>
-            <button onclick="applyQuickMod('Opportune Chance','exotic','enhance2')">Exotic Slot 2</button>
-            <button onclick="applyQuickMod('Opportune Chance','exotic','enhance3')">Exotic Slot 3</button>
-          </div>
-        </div>
-        <div class="qmod-wrap">
-          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Toughness ▾</button>
-          <div class="qmod-dropdown">
-            <button onclick="applyQuickMod('Toughness Boost','standard','enhance1')">SEA Slot 1</button>
-            <button onclick="applyQuickMod('Toughness Boost','standard','enhance2')">SEA Slot 2</button>
-            <button onclick="applyQuickMod('Toughness Boost','standard','enhance3')">SEA Slot 3</button>
-            <div class="qmod-sep"></div>
-            <button onclick="applyQuickMod('Toughness Boost','exotic','enhance1')">Exotic Slot 1</button>
-            <button onclick="applyQuickMod('Toughness Boost','exotic','enhance2')">Exotic Slot 2</button>
-            <button onclick="applyQuickMod('Toughness Boost','exotic','enhance3')">Exotic Slot 3</button>
-          </div>
-        </div>
-        <div class="qmod-wrap">
-          <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Endurance ▾</button>
-          <div class="qmod-dropdown">
-            <button onclick="applyQuickMod('Endurance Boost','standard','enhance1')">SEA Slot 1</button>
-            <button onclick="applyQuickMod('Endurance Boost','standard','enhance2')">SEA Slot 2</button>
-            <button onclick="applyQuickMod('Endurance Boost','standard','enhance3')">SEA Slot 3</button>
-            <div class="qmod-sep"></div>
-            <button onclick="applyQuickMod('Endurance Boost','exotic','enhance1')">Exotic Slot 1</button>
-            <button onclick="applyQuickMod('Endurance Boost','exotic','enhance2')">Exotic Slot 2</button>
-            <button onclick="applyQuickMod('Endurance Boost','exotic','enhance3')">Exotic Slot 3</button>
-          </div>
-        </div>
       </div>
 
-      <!-- ENHANCER PANEL -->
+      <!-- Work area: modifier rail (left) + SEA cards (right) -->
+      <div class="config-main">
+      <!-- MODIFIER RAIL — 3 slots stacked -->
       <div class="enhancer-panel" id="enhancer-panel">
+        <div class="enh-panel-bar">
+          <span class="enh-panel-title">MODIFIERS</span>
+          <div class="enh-mode">
+            <span class="enh-mode-label">Apply mode</span>
+            <button class="enh-mode-btn active" data-mode="overwrite" onclick="setEnhMode('overwrite')" title="Overwrite whatever is in the slot">Overwrite</button>
+            <button class="enh-mode-btn" data-mode="empty" onclick="setEnhMode('empty')" title="Only fill empty slots — keep hand-tuned cards">Fill empty</button>
+          </div>
+          <button class="enh-applyall-btn" onclick="applyAllEnhancers()" title="Apply all three modifier slots at once">▶ APPLY ALL SLOTS</button>
+        </div>
         <div class="enh-box" id="enh-box-0">
           <div class="enh-box-header"><span class="enh-slot-label">MODIFIER SLOT 1</span></div>
           <div class="enh-box-body">
             <select class="enh-mod-select" id="enh-mod-0" onchange="onEnhModChange(0)"><option value="">— select modifier —</option></select>
-            <div class="enh-sel-row">
-              <button class="enh-sel-btn" onclick="enhSelectAll(0)">All</button>
-              <button class="enh-sel-btn" onclick="enhSelectNone(0)">None</button>
-              <button class="enh-sel-btn" onclick="enhSelectSEAs(0)">SEAs</button>
-              <button class="enh-sel-btn" onclick="enhSelectExotics(0)">Exotics</button>
+            <div class="enh-scope-row" id="enh-scope-0">
+              <button class="enh-scope-btn active" data-scope="all" onclick="enhScope(0,'all')">All</button>
+              <button class="enh-scope-btn" data-scope="seas" onclick="enhScope(0,'seas')">SEAs</button>
+              <button class="enh-scope-btn" data-scope="exotics" onclick="enhScope(0,'exotics')">Exotics</button>
+              <button class="enh-scope-btn" data-scope="pick" onclick="enhScope(0,'pick')">Pick…</button>
             </div>
-            <div class="enh-checkbox-grid" id="enh-cb-grid-0"></div>
+            <div class="enh-checkbox-grid" id="enh-cb-grid-0" style="display:none"></div>
             <div class="enh-action-row">
               <button class="enh-apply-btn" onclick="applyEnhancer(0)">▶ APPLY</button>
               <button class="enh-clear-btn" onclick="clearEnhancer(0)">✕</button>
@@ -627,13 +593,13 @@
           <div class="enh-box-header"><span class="enh-slot-label">MODIFIER SLOT 2</span></div>
           <div class="enh-box-body">
             <select class="enh-mod-select" id="enh-mod-1" onchange="onEnhModChange(1)"><option value="">— select modifier —</option></select>
-            <div class="enh-sel-row">
-              <button class="enh-sel-btn" onclick="enhSelectAll(1)">All</button>
-              <button class="enh-sel-btn" onclick="enhSelectNone(1)">None</button>
-              <button class="enh-sel-btn" onclick="enhSelectSEAs(1)">SEAs</button>
-              <button class="enh-sel-btn" onclick="enhSelectExotics(1)">Exotics</button>
+            <div class="enh-scope-row" id="enh-scope-1">
+              <button class="enh-scope-btn active" data-scope="all" onclick="enhScope(1,'all')">All</button>
+              <button class="enh-scope-btn" data-scope="seas" onclick="enhScope(1,'seas')">SEAs</button>
+              <button class="enh-scope-btn" data-scope="exotics" onclick="enhScope(1,'exotics')">Exotics</button>
+              <button class="enh-scope-btn" data-scope="pick" onclick="enhScope(1,'pick')">Pick…</button>
             </div>
-            <div class="enh-checkbox-grid" id="enh-cb-grid-1"></div>
+            <div class="enh-checkbox-grid" id="enh-cb-grid-1" style="display:none"></div>
             <div class="enh-action-row">
               <button class="enh-apply-btn" onclick="applyEnhancer(1)">▶ APPLY</button>
               <button class="enh-clear-btn" onclick="clearEnhancer(1)">✕</button>
@@ -644,13 +610,13 @@
           <div class="enh-box-header"><span class="enh-slot-label">MODIFIER SLOT 3</span></div>
           <div class="enh-box-body">
             <select class="enh-mod-select" id="enh-mod-2" onchange="onEnhModChange(2)"><option value="">— select modifier —</option></select>
-            <div class="enh-sel-row">
-              <button class="enh-sel-btn" onclick="enhSelectAll(2)">All</button>
-              <button class="enh-sel-btn" onclick="enhSelectNone(2)">None</button>
-              <button class="enh-sel-btn" onclick="enhSelectSEAs(2)">SEAs</button>
-              <button class="enh-sel-btn" onclick="enhSelectExotics(2)">Exotics</button>
+            <div class="enh-scope-row" id="enh-scope-2">
+              <button class="enh-scope-btn active" data-scope="all" onclick="enhScope(2,'all')">All</button>
+              <button class="enh-scope-btn" data-scope="seas" onclick="enhScope(2,'seas')">SEAs</button>
+              <button class="enh-scope-btn" data-scope="exotics" onclick="enhScope(2,'exotics')">Exotics</button>
+              <button class="enh-scope-btn" data-scope="pick" onclick="enhScope(2,'pick')">Pick…</button>
             </div>
-            <div class="enh-checkbox-grid" id="enh-cb-grid-2"></div>
+            <div class="enh-checkbox-grid" id="enh-cb-grid-2" style="display:none"></div>
             <div class="enh-action-row">
               <button class="enh-apply-btn" onclick="applyEnhancer(2)">▶ APPLY</button>
               <button class="enh-clear-btn" onclick="clearEnhancer(2)">✕</button>
@@ -662,6 +628,7 @@
       <div class="config-scroll">
         <div class="sea-grid" id="sea-grid"></div>
       </div>
+      </div><!-- /config-main -->
 
       <!-- Drag to resize the output row -->
       <div class="h-gutter" id="h-gutter" title="Drag to resize"></div>
@@ -861,6 +828,18 @@ const MODIFIERS = [
   'Unarmed Damage','Unarmed Speed','Weapon Assembly','Weapon Experimentation'
 ];
 
+// Core stats (ratio-1) pinned to the top of every modifier menu — replaces the old quick-mods.
+const FAVORITE_MODS = ['Defense General','Melee General','Ranged General','Toughness Boost','Endurance Boost','Opportune Chance'];
+function favOptgroups(modList, selVal) {
+  const optFav = m => `<option value="${m}">${m}${lootTag(m)}</option>`;
+  const optAll = m => `<option value="${m}" ${selVal===m?'selected':''}>${m}${lootTag(m)}</option>`;
+  const favs = FAVORITE_MODS.filter(m => modList.includes(m));
+  let html = '';
+  if (favs.length) html += `<optgroup label="★ Core stats">${favs.map(optFav).join('')}</optgroup>`;
+  html += `<optgroup label="All modifiers">${modList.map(optAll).join('')}</optgroup>`;
+  return html;
+}
+
 const NEEDS_GACKLE = new Set(['Heal Cost Reduction*']);
 const NEEDS_CAP    = new Set(['Heal Cost Reduction*']);
 
@@ -972,6 +951,7 @@ const EXOTIC_SEAS = [
 let state = {
   discount: 'none',
   appliedCode: null,      // { code: 'SAVE10', pct: 10 } or null
+  suit: 'Armor',          // default gear type for the 9 standard SEAs (Suit selector)
   standard: Array.from({length:9},()=>({ power:null, type:'Armor', enhance1:'', enhance2:'', enhance3:'' })),
   exotic:   EXOTIC_SEAS.map(es=>({ power:null, type:es.type, enhance1:'', enhance2:'', enhance3:'' })),
 };
@@ -1166,13 +1146,17 @@ function renderSEACard(num, idx, group, sdata, fixedType) {
     return `<select class="field-select ${val?'has-value':''}${lc}"
       data-group="${group}" data-idx="${idx}" data-field="${field}" onchange="updateSEA(this)">
       <option value="">— none —</option>
-      ${modList.map(m=>`<option value="${m}" ${val===m?'selected':''}>${m}${lootTag(m)}</option>`).join('')}
+      ${favOptgroups(modList, val)}
     </select>`;
   }
 
-  const typeControl = `<div class="type-pills">
+  // Exotic slots are fixed by their socket item (Weapon / Breastplate / Shirt) — static badge.
+  // Standard SEAs go on Armor or Clothing only (Weapon is exotic-exclusive).
+  const EXOTIC_ITEM = { Weapon:'Weapon', Armor:'Breastplate', Clothing:'Shirt' };
+  const typeControl = isExotic
+    ? `<span class="exotic-item-badge active-${currentType.toLowerCase()}" title="Exotic ${currentType} attachment — goes in your ${EXOTIC_ITEM[currentType]||currentType}">${EXOTIC_ITEM[currentType]||currentType}</span>`
+    : `<div class="type-pills">
     <button class="type-pill ${currentType==='Armor'   ?'active-armor':''}" onclick="setSeaType('${group}',${idx},'Armor')">ARMOR</button>
-    <button class="type-pill ${currentType==='Weapon'  ?'active-weapon':''}" onclick="setSeaType('${group}',${idx},'Weapon')">WEAPON</button>
     <button class="type-pill ${currentType==='Clothing'?'active-clothing':''}" onclick="setSeaType('${group}',${idx},'Clothing')">CLOTHING</button>
   </div>`;
 
@@ -1320,6 +1304,7 @@ function resetAll() {
   state.exotic   = EXOTIC_SEAS.map(es=>({ power:null, type:es.type, enhance1:'', enhance2:'', enhance3:'' }));
   state.discount    = (cfg && cfg.discountEnabled && cfg.bccDiscount > 0) ? 'bcc' : 'none';
   state.appliedCode = null;
+  state.suit        = 'Armor';
   const codeInput    = document.getElementById('discount-code-input');
   const codeMsg      = document.getElementById('discount-code-msg');
   const ignInput     = document.getElementById('ign-input');
@@ -1332,6 +1317,7 @@ function resetAll() {
   renderPriceSheet();
   populateBulkSelects();
   populateEnhancerSelects();
+  syncSuitToggle();
   showToast('Order cleared.');
 }
 
@@ -1377,13 +1363,52 @@ const SEA_LABELS = [
   ...EXOTIC_SEAS.map((es,i)=>({ id:`exotic-${i}`, label:`EXOTIC ${es.num}`, group:'exotic', idx:i, exotic:true })),
 ];
 
+// Modifier panel state — apply mode + per-slot scope (default: All)
+let enhApplyMode = 'overwrite';
+const enhScopeState = ['all','all','all'];
+
+// Suit selector — sets the gear type for all 9 standard SEAs at once (exotics are fixed).
+function setSuit(type) {
+  state.suit = type;
+  state.standard.forEach(s => { s.type = type; });
+  syncSuitToggle();
+  renderSEAGrid();
+  renderPriceSheet();
+}
+function syncSuitToggle() {
+  const sel = document.getElementById('suit-select');
+  if (sel) sel.value = state.suit;
+}
+
+// Segmented scope per slot: All/SEAs/Exotics set the (hidden) checkboxes; Pick reveals the grid.
+function enhScope(slot, scope) {
+  enhScopeState[slot] = scope;
+  const row = document.getElementById(`enh-scope-${slot}`);
+  if (row) row.querySelectorAll('.enh-scope-btn').forEach(b => b.classList.toggle('active', b.dataset.scope === scope));
+  if (scope === 'all')          enhSelectAll(slot);
+  else if (scope === 'seas')    enhSelectSEAs(slot);
+  else if (scope === 'exotics') enhSelectExotics(slot);
+  const grid = document.getElementById(`enh-cb-grid-${slot}`);
+  if (grid) grid.style.display = (scope === 'pick') ? '' : 'none';
+}
+function setEnhMode(mode) {
+  enhApplyMode = mode;
+  document.querySelectorAll('.enh-mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+}
+function applyAllEnhancers() {
+  const slots = [0,1,2].filter(s => (document.getElementById(`enh-mod-${s}`)||{}).value);
+  if (!slots.length) { showToast('Pick a modifier in at least one slot first.'); return; }
+  slots.forEach(s => applyEnhancer(s, true));
+  showToast(`Applied ${slots.length} modifier slot${slots.length>1?'s':''}.`);
+}
+
 function populateEnhancerSelects() {
   for (let slot=0; slot<3; slot++) {
     const sel = document.getElementById(`enh-mod-${slot}`);
     const cur = sel.value;
-    sel.innerHTML = '<option value="">— select modifier —</option>' +
-      MODIFIERS.map(m=>`<option value="${m}" ${cur===m?'selected':''}>${m}${lootTag(m)}</option>`).join('');
+    sel.innerHTML = '<option value="">— select modifier —</option>' + favOptgroups(MODIFIERS, cur);
     buildEnhancerCheckboxes(slot);
+    enhScope(slot, enhScopeState[slot]);
   }
 }
 
@@ -1410,6 +1435,7 @@ function onEnhModChange(slot) {
   sel.classList.toggle('needs-loot', !!sel.value&&(NEEDS_GACKLE.has(sel.value)||NEEDS_CAP.has(sel.value)));
   document.getElementById(`enh-box-${slot}`).classList.toggle('has-mod', !!sel.value);
   buildEnhancerCheckboxes(slot);
+  enhScope(slot, enhScopeState[slot]);   // keep the segmented scope after the checkbox rebuild
 }
 
 function onEnhCbChange(cb) {
@@ -1437,18 +1463,21 @@ function onEnhCbChange(cb) {
   renderPriceSheet();
 }
 
-function applyEnhancer(slot) {
+function applyEnhancer(slot, silent) {
   const modSel = document.getElementById(`enh-mod-${slot}`);
   const modVal = modSel ? modSel.value : '';
-  if (!modVal) { showToast('Select a modifier first.'); return; }
+  if (!modVal) { if (!silent) showToast('Select a modifier first.'); return; }
   const field = `enhance${slot+1}`;
   const grid  = document.getElementById(`enh-cb-grid-${slot}`);
   if (!grid) return;
+  let count = 0, kept = 0;
   grid.querySelectorAll('input[type="checkbox"]').forEach(cb => {
     if (cb.checked) {
       const group = cb.dataset.group;
       const idx   = parseInt(cb.dataset.idx);
+      if (enhApplyMode === 'empty' && state[group][idx][field]) { kept++; return; } // fill-empty: keep hand-tuned
       state[group][idx][field] = modVal;
+      count++;
       const cardSel = document.querySelector(`[data-group="${group}"][data-idx="${idx}"][data-field="${field}"]`);
       if (cardSel) {
         cardSel.value = modVal;
@@ -1462,7 +1491,7 @@ function applyEnhancer(slot) {
     }
   });
   renderPriceSheet();
-  showToast('Modifier applied!');
+  if (!silent) showToast(`"${modVal}" → Slot ${slot+1} on ${count} SEA(s).${kept?` · ${kept} kept`:''}`);
 }
 
 function clearEnhancer(slot) {
@@ -1972,6 +2001,9 @@ function applyOrderPayload(payload) {
   };
   applyRows(payload.standard || [], 'standard');
   applyRows(payload.exotic   || [], 'exotic');
+  // Reflect loaded standard types on the Suit selector
+  state.suit = (state.standard[0] && state.standard[0].type) || 'Armor';
+  syncSuitToggle();
 
   // Restore BCC discount (admin-controlled; only apply if cfg still has it enabled)
   if (payload.disc !== undefined) setDiscount(payload.disc);
@@ -2152,6 +2184,7 @@ async function init() {
     populateBulkSelects();
     populateEnhancerSelects();
     renderPresetDropdown();
+    syncSuitToggle();
     renderSEAGrid();
     renderPriceSheet();
 
