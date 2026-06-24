@@ -2253,11 +2253,13 @@ init();
     }
   }
 
-  window.openWizard = function () {
-    step = 0;
+  var qsResume = false;
+  function qsOpenAt(s) {
+    step = s;
     render();
     var ov = $('qs-overlay'); if (ov) ov.classList.add('open');
-  };
+  }
+  window.openWizard = function () { qsOpenAt(0); };
   window.closeWizard = function () {
     var ov = $('qs-overlay'); if (ov) ov.classList.remove('open');
     try { localStorage.setItem(SEEN, '1'); } catch (e) {}
@@ -2268,8 +2270,10 @@ init();
   window.qsBack = function () { if (step > 0) { step--; render(); } };
 
   window.qsStartAdvisor = function () {
-    window.closeWizard();
-    if (typeof openAdvisor === 'function') openAdvisor();
+    if (typeof openAdvisor !== 'function') return;
+    qsResume = true;                       // come back to the wizard when the advisor closes
+    var ov = $('qs-overlay'); if (ov) ov.classList.remove('open');  // hide (keep state), don't mark seen
+    openAdvisor();
   };
   window.qsStartBuild = function () { step = 1; render(); };
   window.qsStartPreset = function () {
@@ -2295,7 +2299,7 @@ init();
   };
   function qsApplyPreset(id) {
     if (typeof applyPreset === 'function') applyPreset(id);
-    window.closeWizard();
+    step = 1; render();   // keep the guide going → set power
   }
 
   function qsApplyPower(v) {
@@ -2321,6 +2325,15 @@ init();
         if (out) out.textContent = '+' + v + (v === 35 ? ' (max)' : '');
       });
       pw.addEventListener('change', function () { qsApplyPower(Math.round(+pw.value)); });
+    }
+    // When the advisor was launched from the wizard, resume the wizard (at the
+    // power step) once the advisor closes — whether applied or cancelled.
+    if (typeof window.closeAdvisor === 'function') {
+      var _origCloseAdvisor = window.closeAdvisor;
+      window.closeAdvisor = function () {
+        _origCloseAdvisor.apply(this, arguments);
+        if (qsResume) { qsResume = false; setTimeout(function () { qsOpenAt(1); }, 0); }
+      };
     }
     // Auto-open for first-time visitors once the app is on screen.
     var seen = false;
