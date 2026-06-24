@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Blueshift SEA — Order Form</title>
+<script>/* Set UI mode before paint (no flash). New visitors default to Simple. */
+try { document.documentElement.dataset.mode = localStorage.getItem('blueshift-mode') || 'simple'; }
+catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -87,10 +90,20 @@
   /* ── MAIN LAYOUT ── */
   .main-grid {
     display: grid;
-    grid-template-columns: 400px 1fr;
+    grid-template-columns: var(--left-w,400px) 6px 1fr;
     gap: 0;
     height: calc(100vh - 52px);
   }
+
+  /* ── Resizable splitters ── */
+  .v-gutter { background:var(--border); cursor:col-resize; position:relative; z-index:6; }
+  .v-gutter::after { content:''; position:absolute; left:-3px; right:-3px; top:0; bottom:0; }
+  .v-gutter:hover, .v-gutter.dragging { background:var(--accent); }
+  .h-gutter { height:6px; background:var(--border); cursor:row-resize; flex:0 0 auto; position:relative; }
+  .h-gutter::after { content:''; position:absolute; top:-3px; bottom:-3px; left:0; right:0; }
+  .h-gutter:hover, .h-gutter.dragging { background:var(--accent); }
+  body.resizing-v, body.resizing-v * { cursor:col-resize !important; user-select:none; }
+  body.resizing-h, body.resizing-h * { cursor:row-resize !important; user-select:none; }
 
   /* ── PRICE PANEL (left) ── */
   .price-panel { background:var(--panel); border-right:1px solid var(--border); display:flex; flex-direction:column; overflow:hidden; }
@@ -184,7 +197,7 @@
 
   /* ── CONFIG PANEL (right) ── */
   .config-panel { background:var(--panel2);display:flex;flex-direction:column;overflow:hidden; }
-  .config-scroll { flex:1;overflow-y:auto;padding:12px; }
+  .config-scroll { flex:1 1 auto;overflow-y:auto;padding:12px;min-height:80px; }
   .config-scroll::-webkit-scrollbar { width:4px; }
   .config-scroll::-webkit-scrollbar-track { background:var(--bg); }
   .config-scroll::-webkit-scrollbar-thumb { background:var(--border-bright); }
@@ -276,7 +289,7 @@
   .exotic-sep-label { font-family:'Orbitron',sans-serif;font-size:11px;color:var(--accent3);letter-spacing:4px;text-shadow:0 0 8px rgba(255,107,53,0.4); }
 
   /* ── CONTROLS BAR ── */
-  .controls-bar { background:var(--panel);border-top:1px solid var(--border);padding:12px 12px;display:flex;flex-direction:column;gap:10px; }
+  .controls-bar { background:var(--panel);border-top:1px solid var(--border);padding:12px 12px;display:flex;flex-direction:column;gap:10px;height:var(--out-h,210px);min-height:150px;flex:0 0 auto;overflow:auto; }
   .controls-top { display:flex;gap:9px;align-items:flex-start; }
   .controls-left { display:flex;flex-direction:column;gap:7px; }
 
@@ -360,7 +373,37 @@
     .price-panel { border-right:none;border-bottom:1px solid var(--border);max-height:50vh; }
     .sea-grid { grid-template-columns:1fr; }
     .enhancer-panel { grid-template-columns:1fr; }
+    .v-gutter, .h-gutter { display:none; }
+    .controls-bar { height:auto; }
   }
+
+  /* ── Beginner (Simple) mode ── */
+  html[data-mode="simple"] .adv-only { display:none !important; }
+  html[data-mode="advanced"] .simple-only { display:none !important; }
+  html[data-mode="simple"] .controls-bar { height:auto; }
+
+  .mode-toggle { display:inline-flex; border:1px solid var(--border-bright,var(--border)); border-radius:4px; overflow:hidden; margin-right:14px; }
+  .mode-btn { background:transparent; color:var(--text-dim); border:none; font-family:'Share Tech Mono',monospace; font-size:12px; letter-spacing:1px; padding:6px 14px; cursor:pointer; }
+  .mode-btn:hover { color:var(--text); }
+  html[data-mode="simple"] .mode-btn[data-mode-btn="simple"],
+  html[data-mode="advanced"] .mode-btn[data-mode-btn="advanced"] { background:rgba(0,207,255,0.15); color:var(--accent); }
+
+  .simple-guide { padding:12px 14px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:12px; }
+  .sg-banner { display:flex; gap:10px; background:rgba(0,207,255,0.07); border:1px solid rgba(0,207,255,0.25); border-radius:4px; padding:10px 12px; font-size:13px; line-height:1.5; color:var(--text); }
+  .sg-banner-icon { font-size:18px; line-height:1.3; }
+  .sg-steps { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .sg-step { background:var(--panel); border:1px solid var(--border); border-radius:4px; padding:8px 10px; font-size:13px; color:var(--text-dim); display:flex; align-items:center; gap:8px; }
+  .sg-step.active { border-color:var(--accent); color:var(--text); }
+  .sg-step-n { font-family:'Orbitron',sans-serif; font-size:14px; color:var(--accent); }
+  .sg-title { font-size:13px; font-weight:600; letter-spacing:1px; color:var(--text); }
+  .sg-start { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .sg-card { text-align:left; background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:11px 12px; cursor:pointer; display:flex; flex-direction:column; gap:3px; color:var(--text); font-family:inherit; transition:border-color 0.15s; }
+  .sg-card:hover { border-color:var(--accent); }
+  .sg-card-rec { border-color:var(--accent); }
+  .sg-rec { align-self:flex-start; background:rgba(0,207,255,0.15); color:var(--accent); font-size:10px; letter-spacing:1px; padding:2px 8px; border-radius:3px; text-transform:uppercase; margin-bottom:4px; }
+  .sg-card-h { font-size:14px; font-weight:600; }
+  .sg-card-d { font-size:12px; color:var(--text-dim); }
+  @media (max-width:900px) { .sg-steps, .sg-start { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
@@ -371,6 +414,10 @@
     <div class="logo-sub">SEA ORDER FORM</div>
   </div>
   <div class="header-divider"></div>
+  <div class="mode-toggle" role="group" aria-label="Form mode">
+    <button type="button" class="mode-btn" data-mode-btn="simple" onclick="setMode('simple')" title="Guided, beginner-friendly view">Simple</button>
+    <button type="button" class="mode-btn" data-mode-btn="advanced" onclick="setMode('advanced')" title="Full toolset with bulk controls">Advanced</button>
+  </div>
   <a href="attributes.html" style="text-decoration:none;font-family:'Share Tech Mono',monospace;background:rgba(0,255,157,0.1);border:1px solid var(--accent2,#00ff9d);color:var(--accent2,#00ff9d);padding:7px 14px;border-radius:6px;font-size:12px;letter-spacing:1px;margin-right:14px;">📊 Attribute Planner</a>
   <div class="status-indicator">
     <div class="status-dot"></div>
@@ -390,8 +437,8 @@
         <div class="lock-badge">🔒 READ ONLY</div>
       </div>
       <div class="price-scroll">
-        <div class="section-label">Power Bits / Rare Loot</div>
-        <table class="items-table">
+        <div class="section-label adv-only">Power Bits / Rare Loot</div>
+        <table class="items-table adv-only">
           <thead>
             <tr>
               <th>ITEM</th>
@@ -402,6 +449,7 @@
           </thead>
           <tbody id="items-tbody"></tbody>
         </table>
+        <div class="section-label simple-only">Your order</div>
         <div class="totals-block">
           <div class="total-row">
             <span class="total-label">SUBTOTAL</span>
@@ -434,17 +482,49 @@
       </div>
 
       <!-- Running Stats -->
-      <div class="stats-panel" id="stats-panel">
+      <div class="stats-panel adv-only" id="stats-panel">
         <div class="stats-header">Running Stats</div>
         <div class="stats-empty" id="stats-empty">Select enhancements to see modifier summary</div>
         <div class="stats-grid" id="stats-grid" style="display:none"></div>
       </div>
     </div>
 
+    <!-- Drag to resize the left column -->
+    <div class="v-gutter" id="v-gutter" title="Drag to resize"></div>
+
     <!-- RIGHT: SEA Configuration -->
     <div class="config-panel">
       <div class="panel-header">
         <div class="panel-title">SEA Configuration</div>
+      </div>
+
+      <!-- BEGINNER (SIMPLE) GUIDE -->
+      <div class="simple-guide simple-only">
+        <div class="sg-banner">
+          <span class="sg-banner-icon">💡</span>
+          <div><b>What's a SEA?</b> A Stat Enhancement Attachment adds bonuses to your gear. Build up to 9 standard + 3 exotic attachments, set how strong they are, then submit your order — most people use the advisor below and finish in under a minute.</div>
+        </div>
+        <div class="sg-steps">
+          <div class="sg-step active"><span class="sg-step-n">1</span> Pick a build</div>
+          <div class="sg-step"><span class="sg-step-n">2</span> Set power</div>
+          <div class="sg-step"><span class="sg-step-n">3</span> Review &amp; submit</div>
+        </div>
+        <div class="sg-title">1 · Choose how to start</div>
+        <div class="sg-start">
+          <button type="button" class="sg-card sg-card-rec" onclick="openAdvisor()">
+            <span class="sg-rec">Recommended</span>
+            <span class="sg-card-h">🧭 Loadout advisor</span>
+            <span class="sg-card-d">Tell us your professions — we suggest the stats.</span>
+          </button>
+          <button type="button" class="sg-card" onclick="openPresetMenu()">
+            <span class="sg-card-h">▦ Load a preset</span>
+            <span class="sg-card-d">Start from a ready-made build.</span>
+          </button>
+          <button type="button" class="sg-card" onclick="focusBuild()">
+            <span class="sg-card-h">⚙ Build it myself</span>
+            <span class="sg-card-d">Pick each attachment below.</span>
+          </button>
+        </div>
       </div>
 
       <!-- POWER BULK BAR -->
@@ -470,7 +550,7 @@
           <button class="bulk-apply" onclick="openAdvisor()" title="Recommend stats from your professions" style="background:rgba(176,106,255,0.12);border-color:var(--admin,#b06aff);color:var(--admin,#b06aff);">🧭 Loadout Advisor</button>
         </div>
         <!-- QUICK MODIFIER BUTTONS -->
-        <div class="qmod-wrap">
+        <div class="qmod-wrap adv-only">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Defense General ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Defense General','standard','enhance1')">SEA Slot 1</button>
@@ -482,7 +562,7 @@
             <button onclick="applyQuickMod('Defense General','exotic','enhance3')">Exotic Slot 3</button>
           </div>
         </div>
-        <div class="qmod-wrap">
+        <div class="qmod-wrap adv-only">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Melee General ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Melee General','standard','enhance1')">SEA Slot 1</button>
@@ -494,7 +574,7 @@
             <button onclick="applyQuickMod('Melee General','exotic','enhance3')">Exotic Slot 3</button>
           </div>
         </div>
-        <div class="qmod-wrap">
+        <div class="qmod-wrap adv-only">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Ranged General ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Ranged General','standard','enhance1')">SEA Slot 1</button>
@@ -506,7 +586,7 @@
             <button onclick="applyQuickMod('Ranged General','exotic','enhance3')">Exotic Slot 3</button>
           </div>
         </div>
-        <div class="qmod-wrap">
+        <div class="qmod-wrap adv-only">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Opportune Chance ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Opportune Chance','standard','enhance1')">SEA Slot 1</button>
@@ -518,7 +598,7 @@
             <button onclick="applyQuickMod('Opportune Chance','exotic','enhance3')">Exotic Slot 3</button>
           </div>
         </div>
-        <div class="qmod-wrap">
+        <div class="qmod-wrap adv-only">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Toughness ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Toughness Boost','standard','enhance1')">SEA Slot 1</button>
@@ -530,7 +610,7 @@
             <button onclick="applyQuickMod('Toughness Boost','exotic','enhance3')">Exotic Slot 3</button>
           </div>
         </div>
-        <div class="qmod-wrap">
+        <div class="qmod-wrap adv-only">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Endurance ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Endurance Boost','standard','enhance1')">SEA Slot 1</button>
@@ -545,7 +625,7 @@
       </div>
 
       <!-- ENHANCER PANEL -->
-      <div class="enhancer-panel" id="enhancer-panel">
+      <div class="enhancer-panel adv-only" id="enhancer-panel">
         <div class="enh-box" id="enh-box-0">
           <div class="enh-box-header"><span class="enh-slot-label">MODIFIER SLOT 1</span></div>
           <div class="enh-box-body">
@@ -603,6 +683,9 @@
         <div class="sea-grid" id="sea-grid"></div>
       </div>
 
+      <!-- Drag to resize the output row -->
+      <div class="h-gutter adv-only" id="h-gutter" title="Drag to resize"></div>
+
       <!-- CONTROLS BAR -->
       <div class="controls-bar">
         <div class="ign-row">
@@ -619,11 +702,11 @@
           <div class="controls-left">
             <button class="btn btn-primary" onclick="copyToClipboard()">⎘ COPY SUMMARY</button>
             <button class="btn btn-danger" onclick="resetAll()">✕ RESET</button>
-            <button class="btn" style="border-color:rgba(0,207,255,0.35);color:var(--accent);" onclick="saveOrderWeb()">⬇ SAVE ORDER</button>
-            <button class="btn" style="border-color:rgba(0,207,255,0.35);color:var(--accent);" onclick="loadOrderWeb()">⬆ LOAD ORDER</button>
+            <button class="btn adv-only" style="border-color:rgba(0,207,255,0.35);color:var(--accent);" onclick="saveOrderWeb()">⬇ SAVE ORDER</button>
+            <button class="btn adv-only" style="border-color:rgba(0,207,255,0.35);color:var(--accent);" onclick="loadOrderWeb()">⬆ LOAD ORDER</button>
             <input type="file" id="load-order-input" accept=".bsea" style="display:none" onchange="handleLoadOrderFile(event)">
           </div>
-          <textarea class="copy-output" id="copy-output" readonly placeholder="Configure SEAs to generate order summary..."></textarea>
+          <textarea class="copy-output adv-only" id="copy-output" readonly placeholder="Configure SEAs to generate order summary..."></textarea>
         </div>
         <button class="btn-submit" id="btn-submit" onclick="submitOrder()">▶ SUBMIT ORDER TO BLUESHIFT</button>
       </div>
@@ -2037,6 +2120,90 @@ async function init() {
 }
 
 init();
+</script>
+
+<!-- ── Resizable panels (left column + output row), sizes persisted ── -->
+<script>
+(function () {
+  'use strict';
+  var LS_LEFT = 'blueshift-left-w', LS_OUT = 'blueshift-out-h';
+  var root = document.documentElement;
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  try {
+    var lw = parseInt(localStorage.getItem(LS_LEFT), 10);
+    if (lw) root.style.setProperty('--left-w', lw + 'px');
+    var oh = parseInt(localStorage.getItem(LS_OUT), 10);
+    if (oh) root.style.setProperty('--out-h', oh + 'px');
+  } catch (e) {}
+
+  function drag(gutter, cls, onMove, onEnd) {
+    if (!gutter) return;
+    gutter.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      gutter.classList.add('dragging');
+      document.body.classList.add(cls);
+      function mv(ev) { onMove(ev); }
+      function up() {
+        document.removeEventListener('mousemove', mv);
+        document.removeEventListener('mouseup', up);
+        gutter.classList.remove('dragging');
+        document.body.classList.remove(cls);
+        onEnd();
+      }
+      document.addEventListener('mousemove', mv);
+      document.addEventListener('mouseup', up);
+    });
+  }
+
+  function init() {
+    var grid = document.querySelector('.main-grid');
+    var vg   = document.getElementById('v-gutter');
+    drag(vg, 'resizing-v', function (ev) {
+      var left = grid.getBoundingClientRect().left;
+      var w = clamp(ev.clientX - left, 240, Math.min(720, grid.clientWidth - 360));
+      root.style.setProperty('--left-w', w + 'px');
+    }, function () {
+      var w = parseInt(getComputedStyle(root).getPropertyValue('--left-w'), 10) || 400;
+      try { localStorage.setItem(LS_LEFT, w); } catch (e) {}
+    });
+
+    var panel = document.querySelector('.config-panel');
+    var hg    = document.getElementById('h-gutter');
+    drag(hg, 'resizing-h', function (ev) {
+      var bottom = panel.getBoundingClientRect().bottom;
+      var h = clamp(bottom - ev.clientY, 150, panel.clientHeight - 160);
+      root.style.setProperty('--out-h', h + 'px');
+    }, function () {
+      var h = parseInt(getComputedStyle(root).getPropertyValue('--out-h'), 10) || 210;
+      try { localStorage.setItem(LS_OUT, h); } catch (e) {}
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+
+<!-- ── Beginner (Simple) / Advanced mode toggle ── -->
+<script>
+function setMode(m) {
+  if (m !== 'simple' && m !== 'advanced') return;
+  document.documentElement.dataset.mode = m;
+  try { localStorage.setItem('blueshift-mode', m); } catch (e) {}
+}
+/* Open the preset dropdown from the Simple-mode start card. */
+function openPresetMenu() {
+  var sel = document.getElementById('preset-select');
+  if (!sel) return;
+  var btn = sel.parentNode && sel.parentNode.querySelector('.cdd-btn');
+  if (btn) { btn.click(); btn.scrollIntoView({ block: 'center' }); }
+  else { try { sel.focus(); } catch (e) {} }
+}
+/* Scroll the build (SEA cards) into view from the Simple-mode start card. */
+function focusBuild() {
+  var g = document.getElementById('sea-grid');
+  if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 </script>
 </body>
 </html>
