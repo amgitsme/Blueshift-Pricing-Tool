@@ -4,9 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Blueshift SEA — Order Form</title>
-<script>/* Set UI mode before paint (no flash). New visitors default to Simple. */
-try { document.documentElement.dataset.mode = localStorage.getItem('blueshift-mode') || 'simple'; }
-catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -377,33 +374,49 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
     .controls-bar { height:auto; }
   }
 
-  /* ── Beginner (Simple) mode ── */
-  html[data-mode="simple"] .adv-only { display:none !important; }
-  html[data-mode="advanced"] .simple-only { display:none !important; }
-  html[data-mode="simple"] .controls-bar { height:auto; }
-
-  .mode-toggle { display:inline-flex; border:1px solid var(--border-bright,var(--border)); border-radius:4px; overflow:hidden; margin-right:14px; }
-  .mode-btn { background:transparent; color:var(--text-dim); border:none; font-family:'Share Tech Mono',monospace; font-size:12px; letter-spacing:1px; padding:6px 14px; cursor:pointer; }
-  .mode-btn:hover { color:var(--text); }
-  html[data-mode="simple"] .mode-btn[data-mode-btn="simple"],
-  html[data-mode="advanced"] .mode-btn[data-mode-btn="advanced"] { background:rgba(0,207,255,0.15); color:var(--accent); }
-
-  .simple-guide { padding:12px 14px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:12px; }
-  .sg-banner { display:flex; gap:10px; background:rgba(0,207,255,0.07); border:1px solid rgba(0,207,255,0.25); border-radius:4px; padding:10px 12px; font-size:13px; line-height:1.5; color:var(--text); }
-  .sg-banner-icon { font-size:18px; line-height:1.3; }
-  .sg-steps { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-  .sg-step { background:var(--panel); border:1px solid var(--border); border-radius:4px; padding:8px 10px; font-size:13px; color:var(--text-dim); display:flex; align-items:center; gap:8px; }
-  .sg-step.active { border-color:var(--accent); color:var(--text); }
-  .sg-step-n { font-family:'Orbitron',sans-serif; font-size:14px; color:var(--accent); }
-  .sg-title { font-size:13px; font-weight:600; letter-spacing:1px; color:var(--text); }
-  .sg-start { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  .sg-card { text-align:left; background:var(--panel); border:1px solid var(--border); border-radius:6px; padding:11px 12px; cursor:pointer; display:flex; flex-direction:column; gap:3px; color:var(--text); font-family:inherit; transition:border-color 0.15s; }
-  .sg-card:hover { border-color:var(--accent); }
-  .sg-card-rec { border-color:var(--accent); }
-  .sg-rec { align-self:flex-start; background:rgba(0,207,255,0.15); color:var(--accent); font-size:10px; letter-spacing:1px; padding:2px 8px; border-radius:3px; text-transform:uppercase; margin-bottom:4px; }
-  .sg-card-h { font-size:14px; font-weight:600; }
-  .sg-card-d { font-size:12px; color:var(--text-dim); }
-  @media (max-width:900px) { .sg-steps, .sg-start { grid-template-columns:1fr; } }
+  /* ── Quick Start wizard ── */
+  .qs-launch { font-family:'Share Tech Mono',monospace; background:rgba(176,106,255,0.12); border:1px solid var(--admin,#b06aff); color:var(--admin,#b06aff); padding:7px 14px; border-radius:6px; font-size:12px; letter-spacing:1px; margin-right:14px; cursor:pointer; }
+  .qs-launch:hover { background:rgba(176,106,255,0.22); }
+  .qs-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:400; display:none; align-items:center; justify-content:center; padding:16px; }
+  .qs-overlay.open { display:flex; }
+  .qs-modal { width:min(460px,100%); background:var(--panel,#0b1016); border:1px solid var(--border-bright,var(--border)); border-radius:8px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+  .qs-head { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border); }
+  .qs-head-title { display:flex; align-items:center; gap:8px; font-family:'Orbitron',sans-serif; font-size:15px; letter-spacing:1px; color:var(--accent); }
+  .qs-head-right { display:flex; align-items:center; gap:12px; }
+  .qs-step-label { font-size:12px; color:var(--text-dim); font-family:'Share Tech Mono',monospace; }
+  .qs-close { background:none; border:none; color:var(--text-dim); font-size:18px; cursor:pointer; line-height:1; }
+  .qs-close:hover { color:var(--text); }
+  .qs-dots { display:flex; gap:6px; padding:12px 16px 0; }
+  .qs-dot { height:4px; flex:1; border-radius:2px; background:var(--border); transition:background 0.2s; }
+  .qs-dot.on { background:var(--accent); }
+  .qs-body { padding:16px; min-height:188px; }
+  .qs-step { display:none; }
+  .qs-step.active { display:block; }
+  .qs-intro { font-size:13px; line-height:1.6; color:var(--text-dim); margin-bottom:14px; }
+  .qs-intro b { color:var(--text); }
+  .qs-opt { width:100%; text-align:left; display:flex; gap:10px; align-items:center; margin-bottom:8px; border:1px solid var(--border); border-radius:6px; padding:11px 12px; background:var(--panel2); cursor:pointer; color:var(--text); font-family:inherit; transition:border-color 0.15s; }
+  .qs-opt:hover { border-color:var(--accent); }
+  .qs-opt.rec { border-color:var(--accent); }
+  .qs-opt-ico { font-size:20px; line-height:1; }
+  .qs-opt-h { font-weight:600; font-size:14px; }
+  .qs-opt-d { font-size:12px; color:var(--text-dim); }
+  .qs-rec-badge { background:rgba(0,207,255,0.15); color:var(--accent); font-size:10px; letter-spacing:1px; padding:1px 7px; border-radius:3px; text-transform:uppercase; margin-left:6px; }
+  .qs-step-title { font-size:15px; font-weight:600; color:var(--text); margin-bottom:4px; }
+  .qs-step-sub { font-size:13px; color:var(--text-dim); margin-bottom:16px; }
+  .qs-pow-row { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .qs-pow-row input[type=range] { flex:1; }
+  .qs-pow-out { font-size:15px; font-weight:600; color:var(--gold); min-width:96px; text-align:right; font-family:'Share Tech Mono',monospace; }
+  .qs-tip { display:flex; gap:10px; align-items:flex-start; margin-bottom:11px; font-size:13px; color:var(--text-dim); }
+  .qs-tip-ico { font-size:16px; line-height:1.2; }
+  .qs-foot { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-top:1px solid var(--border); }
+  .qs-btn { font-family:'Share Tech Mono',monospace; font-size:13px; letter-spacing:1px; padding:7px 16px; border-radius:4px; cursor:pointer; border:1px solid var(--border-bright,var(--border)); background:transparent; color:var(--text); }
+  .qs-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .qs-btn-primary { border-color:var(--accent); color:var(--accent); background:rgba(0,207,255,0.1); }
+  .qs-skip { font-size:12px; color:var(--text-dim); cursor:pointer; background:none; border:none; font-family:inherit; }
+  .qs-skip:hover { color:var(--text); }
+  .qs-mini { display:flex; flex-direction:column; gap:6px; }
+  .qs-mini button { text-align:left; background:var(--panel2); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:8px 10px; cursor:pointer; font-family:inherit; font-size:13px; }
+  .qs-mini button:hover { border-color:var(--accent); }
 </style>
 </head>
 <body>
@@ -414,10 +427,7 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
     <div class="logo-sub">SEA ORDER FORM</div>
   </div>
   <div class="header-divider"></div>
-  <div class="mode-toggle" role="group" aria-label="Form mode">
-    <button type="button" class="mode-btn" data-mode-btn="simple" onclick="setMode('simple')" title="Guided, beginner-friendly view">Simple</button>
-    <button type="button" class="mode-btn" data-mode-btn="advanced" onclick="setMode('advanced')" title="Full toolset with bulk controls">Advanced</button>
-  </div>
+  <button type="button" class="qs-launch" onclick="openWizard()" title="Step-by-step guide for new players">🚀 Quick Start</button>
   <a href="attributes.html" style="text-decoration:none;font-family:'Share Tech Mono',monospace;background:rgba(0,255,157,0.1);border:1px solid var(--accent2,#00ff9d);color:var(--accent2,#00ff9d);padding:7px 14px;border-radius:6px;font-size:12px;letter-spacing:1px;margin-right:14px;">📊 Attribute Planner</a>
   <div class="status-indicator">
     <div class="status-dot"></div>
@@ -437,8 +447,8 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
         <div class="lock-badge">🔒 READ ONLY</div>
       </div>
       <div class="price-scroll">
-        <div class="section-label adv-only">Power Bits / Rare Loot</div>
-        <table class="items-table adv-only">
+        <div class="section-label">Power Bits / Rare Loot</div>
+        <table class="items-table">
           <thead>
             <tr>
               <th>ITEM</th>
@@ -449,7 +459,6 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
           </thead>
           <tbody id="items-tbody"></tbody>
         </table>
-        <div class="section-label simple-only">Your order</div>
         <div class="totals-block">
           <div class="total-row">
             <span class="total-label">SUBTOTAL</span>
@@ -482,7 +491,7 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
       </div>
 
       <!-- Running Stats -->
-      <div class="stats-panel adv-only" id="stats-panel">
+      <div class="stats-panel" id="stats-panel">
         <div class="stats-header">Running Stats</div>
         <div class="stats-empty" id="stats-empty">Select enhancements to see modifier summary</div>
         <div class="stats-grid" id="stats-grid" style="display:none"></div>
@@ -496,35 +505,6 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
     <div class="config-panel">
       <div class="panel-header">
         <div class="panel-title">SEA Configuration</div>
-      </div>
-
-      <!-- BEGINNER (SIMPLE) GUIDE -->
-      <div class="simple-guide simple-only">
-        <div class="sg-banner">
-          <span class="sg-banner-icon">💡</span>
-          <div><b>What's a SEA?</b> A Stat Enhancement Attachment adds bonuses to your gear. Build up to 9 standard + 3 exotic attachments, set how strong they are, then submit your order — most people use the advisor below and finish in under a minute.</div>
-        </div>
-        <div class="sg-steps">
-          <div class="sg-step active"><span class="sg-step-n">1</span> Pick a build</div>
-          <div class="sg-step"><span class="sg-step-n">2</span> Set power</div>
-          <div class="sg-step"><span class="sg-step-n">3</span> Review &amp; submit</div>
-        </div>
-        <div class="sg-title">1 · Choose how to start</div>
-        <div class="sg-start">
-          <button type="button" class="sg-card sg-card-rec" onclick="openAdvisor()">
-            <span class="sg-rec">Recommended</span>
-            <span class="sg-card-h">🧭 Loadout advisor</span>
-            <span class="sg-card-d">Tell us your professions — we suggest the stats.</span>
-          </button>
-          <button type="button" class="sg-card" onclick="openPresetMenu()">
-            <span class="sg-card-h">▦ Load a preset</span>
-            <span class="sg-card-d">Start from a ready-made build.</span>
-          </button>
-          <button type="button" class="sg-card" onclick="focusBuild()">
-            <span class="sg-card-h">⚙ Build it myself</span>
-            <span class="sg-card-d">Pick each attachment below.</span>
-          </button>
-        </div>
       </div>
 
       <!-- POWER BULK BAR -->
@@ -550,7 +530,7 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
           <button class="bulk-apply" onclick="openAdvisor()" title="Recommend stats from your professions" style="background:rgba(176,106,255,0.12);border-color:var(--admin,#b06aff);color:var(--admin,#b06aff);">🧭 Loadout Advisor</button>
         </div>
         <!-- QUICK MODIFIER BUTTONS -->
-        <div class="qmod-wrap adv-only">
+        <div class="qmod-wrap">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Defense General ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Defense General','standard','enhance1')">SEA Slot 1</button>
@@ -562,7 +542,7 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
             <button onclick="applyQuickMod('Defense General','exotic','enhance3')">Exotic Slot 3</button>
           </div>
         </div>
-        <div class="qmod-wrap adv-only">
+        <div class="qmod-wrap">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Melee General ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Melee General','standard','enhance1')">SEA Slot 1</button>
@@ -574,7 +554,7 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
             <button onclick="applyQuickMod('Melee General','exotic','enhance3')">Exotic Slot 3</button>
           </div>
         </div>
-        <div class="qmod-wrap adv-only">
+        <div class="qmod-wrap">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Ranged General ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Ranged General','standard','enhance1')">SEA Slot 1</button>
@@ -586,7 +566,7 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
             <button onclick="applyQuickMod('Ranged General','exotic','enhance3')">Exotic Slot 3</button>
           </div>
         </div>
-        <div class="qmod-wrap adv-only">
+        <div class="qmod-wrap">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Opportune Chance ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Opportune Chance','standard','enhance1')">SEA Slot 1</button>
@@ -598,7 +578,7 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
             <button onclick="applyQuickMod('Opportune Chance','exotic','enhance3')">Exotic Slot 3</button>
           </div>
         </div>
-        <div class="qmod-wrap adv-only">
+        <div class="qmod-wrap">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Toughness ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Toughness Boost','standard','enhance1')">SEA Slot 1</button>
@@ -610,7 +590,7 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
             <button onclick="applyQuickMod('Toughness Boost','exotic','enhance3')">Exotic Slot 3</button>
           </div>
         </div>
-        <div class="qmod-wrap adv-only">
+        <div class="qmod-wrap">
           <button class="qmod-btn" onclick="toggleQmodDropdown(this)">Endurance ▾</button>
           <div class="qmod-dropdown">
             <button onclick="applyQuickMod('Endurance Boost','standard','enhance1')">SEA Slot 1</button>
@@ -625,7 +605,7 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
       </div>
 
       <!-- ENHANCER PANEL -->
-      <div class="enhancer-panel adv-only" id="enhancer-panel">
+      <div class="enhancer-panel" id="enhancer-panel">
         <div class="enh-box" id="enh-box-0">
           <div class="enh-box-header"><span class="enh-slot-label">MODIFIER SLOT 1</span></div>
           <div class="enh-box-body">
@@ -684,7 +664,7 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
       </div>
 
       <!-- Drag to resize the output row -->
-      <div class="h-gutter adv-only" id="h-gutter" title="Drag to resize"></div>
+      <div class="h-gutter" id="h-gutter" title="Drag to resize"></div>
 
       <!-- CONTROLS BAR -->
       <div class="controls-bar">
@@ -702,14 +682,79 @@ catch (e) { document.documentElement.dataset.mode = 'simple'; }</script>
           <div class="controls-left">
             <button class="btn btn-primary" onclick="copyToClipboard()">⎘ COPY SUMMARY</button>
             <button class="btn btn-danger" onclick="resetAll()">✕ RESET</button>
-            <button class="btn adv-only" style="border-color:rgba(0,207,255,0.35);color:var(--accent);" onclick="saveOrderWeb()">⬇ SAVE ORDER</button>
-            <button class="btn adv-only" style="border-color:rgba(0,207,255,0.35);color:var(--accent);" onclick="loadOrderWeb()">⬆ LOAD ORDER</button>
+            <button class="btn" style="border-color:rgba(0,207,255,0.35);color:var(--accent);" onclick="saveOrderWeb()">⬇ SAVE ORDER</button>
+            <button class="btn" style="border-color:rgba(0,207,255,0.35);color:var(--accent);" onclick="loadOrderWeb()">⬆ LOAD ORDER</button>
             <input type="file" id="load-order-input" accept=".bsea" style="display:none" onchange="handleLoadOrderFile(event)">
           </div>
-          <textarea class="copy-output adv-only" id="copy-output" readonly placeholder="Configure SEAs to generate order summary..."></textarea>
+          <textarea class="copy-output" id="copy-output" readonly placeholder="Configure SEAs to generate order summary..."></textarea>
         </div>
         <button class="btn-submit" id="btn-submit" onclick="submitOrder()">▶ SUBMIT ORDER TO BLUESHIFT</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK START WIZARD -->
+<div class="qs-overlay" id="qs-overlay" role="dialog" aria-modal="true" aria-label="Quick start guide">
+  <div class="qs-modal">
+    <div class="qs-head">
+      <div class="qs-head-title"><span>🚀</span> Quick Start</div>
+      <div class="qs-head-right">
+        <span class="qs-step-label" id="qs-step-label">Step 1 of 3</span>
+        <button type="button" class="qs-close" onclick="closeWizard()" aria-label="Close">✕</button>
+      </div>
+    </div>
+    <div class="qs-dots">
+      <span class="qs-dot on" data-dot="0"></span>
+      <span class="qs-dot" data-dot="1"></span>
+      <span class="qs-dot" data-dot="2"></span>
+    </div>
+    <div class="qs-body">
+
+      <div class="qs-step active" id="qs-s1">
+        <div class="qs-intro"><b>What's a SEA?</b> A Stat Enhancement Attachment adds bonuses to your gear. You'll build up to 9 standard + 3 exotic attachments. Pick how you'd like to start.</div>
+        <div id="qs-start">
+          <button type="button" class="qs-opt rec" onclick="qsStartAdvisor()">
+            <span class="qs-opt-ico">🧭</span>
+            <span><span class="qs-opt-h">Loadout advisor<span class="qs-rec-badge">Recommended</span></span><br><span class="qs-opt-d">Tell us your professions — we suggest the stats.</span></span>
+          </button>
+          <button type="button" class="qs-opt" onclick="qsStartPreset()">
+            <span class="qs-opt-ico">▦</span>
+            <span><span class="qs-opt-h">Load a preset</span><br><span class="qs-opt-d">Start from a ready-made build.</span></span>
+          </button>
+          <button type="button" class="qs-opt" onclick="qsStartBuild()">
+            <span class="qs-opt-ico">⚙</span>
+            <span><span class="qs-opt-h">Build it myself</span><br><span class="qs-opt-d">Pick each attachment yourself.</span></span>
+          </button>
+        </div>
+        <div id="qs-preset-list" style="display:none">
+          <div class="qs-step-sub" style="margin-bottom:10px">Choose a preset to load:</div>
+          <div class="qs-mini" id="qs-preset-buttons"></div>
+        </div>
+      </div>
+
+      <div class="qs-step" id="qs-s2">
+        <div class="qs-step-title">Set power</div>
+        <div class="qs-step-sub">Higher power means a stronger bonus on every attachment.</div>
+        <div class="qs-pow-row">
+          <input type="range" min="27" max="35" value="35" step="1" id="qs-pow" aria-label="Power">
+          <span class="qs-pow-out" id="qs-pow-out">+35 (max)</span>
+        </div>
+        <button type="button" class="qs-btn" onclick="qsMaxPower()">⚡ Max all (35)</button>
+      </div>
+
+      <div class="qs-step" id="qs-s3">
+        <div class="qs-step-title">Review &amp; submit</div>
+        <div class="qs-tip"><span class="qs-tip-ico">✅</span><span>Your running total shows in the price panel on the left.</span></div>
+        <div class="qs-tip"><span class="qs-tip-ico">🎟️</span><span>Have a discount code? Enter it in the price panel and hit Apply.</span></div>
+        <div class="qs-tip"><span class="qs-tip-ico">💬</span><span>Add your Discord tag (required), then hit Submit Order to send it to Blueshift.</span></div>
+      </div>
+
+    </div>
+    <div class="qs-foot">
+      <button type="button" class="qs-btn" id="qs-back" onclick="qsBack()">Back</button>
+      <button type="button" class="qs-skip" onclick="closeWizard()">Skip</button>
+      <button type="button" class="qs-btn qs-btn-primary" id="qs-next" onclick="qsNext()">Next</button>
     </div>
   </div>
 </div>
@@ -2184,27 +2229,117 @@ init();
 })();
 </script>
 
-<!-- ── Beginner (Simple) / Advanced mode toggle ── -->
+<!-- ── Quick Start wizard ── -->
 <script>
-function setMode(m) {
-  if (m !== 'simple' && m !== 'advanced') return;
-  document.documentElement.dataset.mode = m;
-  try { localStorage.setItem('blueshift-mode', m); } catch (e) {}
-}
-/* Open the preset dropdown from the Simple-mode start card. */
-function openPresetMenu() {
-  var sel = document.getElementById('preset-select');
-  if (!sel) return;
-  var btn = sel.parentNode && sel.parentNode.querySelector('.cdd-btn');
-  if (btn) { btn.click(); btn.scrollIntoView({ block: 'center' }); }
-  else { try { sel.focus(); } catch (e) {} }
-}
-/* Scroll the build (SEA cards) into view from the Simple-mode start card. */
-function focusBuild() {
-  var g = document.getElementById('sea-grid');
-  if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
+(function () {
+  'use strict';
+  var SEEN = 'blueshift-qs-seen';
+  var step = 0;
+  var $ = function (id) { return document.getElementById(id); };
+
+  function render() {
+    for (var i = 0; i < 3; i++) {
+      var s = $('qs-s' + (i + 1));
+      if (s) s.classList.toggle('active', i === step);
+      var d = document.querySelector('.qs-dot[data-dot="' + i + '"]');
+      if (d) d.classList.toggle('on', i <= step);
+    }
+    var lbl = $('qs-step-label'); if (lbl) lbl.textContent = 'Step ' + (step + 1) + ' of 3';
+    var back = $('qs-back'); if (back) back.style.visibility = step === 0 ? 'hidden' : 'visible';
+    var next = $('qs-next'); if (next) next.textContent = step === 2 ? 'Finish' : 'Next';
+    if (step === 0) { // reset start view
+      var list = $('qs-preset-list'); if (list) list.style.display = 'none';
+      var start = $('qs-start'); if (start) start.style.display = 'block';
+    }
+  }
+
+  window.openWizard = function () {
+    step = 0;
+    render();
+    var ov = $('qs-overlay'); if (ov) ov.classList.add('open');
+  };
+  window.closeWizard = function () {
+    var ov = $('qs-overlay'); if (ov) ov.classList.remove('open');
+    try { localStorage.setItem(SEEN, '1'); } catch (e) {}
+  };
+  window.qsNext = function () {
+    if (step < 2) { step++; render(); } else { window.closeWizard(); }
+  };
+  window.qsBack = function () { if (step > 0) { step--; render(); } };
+
+  window.qsStartAdvisor = function () {
+    window.closeWizard();
+    if (typeof openAdvisor === 'function') openAdvisor();
+  };
+  window.qsStartBuild = function () { step = 1; render(); };
+  window.qsStartPreset = function () {
+    var sel = $('preset-select');
+    var opts = sel ? Array.prototype.filter.call(sel.options, function (o) { return o.value; }) : [];
+    var wrap = $('qs-preset-buttons');
+    if (!opts.length) {
+      if (typeof showToast === 'function') showToast('No presets are available yet.');
+      return;
+    }
+    if (wrap) {
+      wrap.innerHTML = '';
+      opts.forEach(function (o) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = o.textContent;
+        b.onclick = function () { qsApplyPreset(o.value); };
+        wrap.appendChild(b);
+      });
+    }
+    var start = $('qs-start'); if (start) start.style.display = 'none';
+    var list = $('qs-preset-list'); if (list) list.style.display = 'block';
+  };
+  function qsApplyPreset(id) {
+    if (typeof applyPreset === 'function') applyPreset(id);
+    window.closeWizard();
+  }
+
+  function qsApplyPower(v) {
+    try {
+      if (!window.state) return;
+      state.standard.forEach(function (s) { s.power = v; });
+      state.exotic.forEach(function (s) { s.power = v; });
+      if (typeof renderSEAGrid === 'function') renderSEAGrid();
+      if (typeof renderPriceSheet === 'function') renderPriceSheet();
+    } catch (e) {}
+  }
+  window.qsMaxPower = function () {
+    var pw = $('qs-pow'); if (pw) pw.value = 35;
+    var out = $('qs-pow-out'); if (out) out.textContent = '+35 (max)';
+    qsApplyPower(35);
+  };
+
+  function initWizard() {
+    var pw = $('qs-pow'), out = $('qs-pow-out');
+    if (pw) {
+      pw.addEventListener('input', function () {
+        var v = Math.round(+pw.value);
+        if (out) out.textContent = '+' + v + (v === 35 ? ' (max)' : '');
+      });
+      pw.addEventListener('change', function () { qsApplyPower(Math.round(+pw.value)); });
+    }
+    // Auto-open for first-time visitors once the app is on screen.
+    var seen = false;
+    try { seen = !!localStorage.getItem(SEEN); } catch (e) {}
+    if (!seen) {
+      var tries = 0;
+      var iv = setInterval(function () {
+        tries++;
+        var app = $('app');
+        if (app && getComputedStyle(app).display !== 'none') { clearInterval(iv); window.openWizard(); }
+        else if (tries > 25) { clearInterval(iv); }
+      }, 300);
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initWizard);
+  else initWizard();
+})();
 </script>
+
 </body>
 </html>
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              
