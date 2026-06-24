@@ -2302,14 +2302,14 @@ init();
     step = 1; render();   // keep the guide going → set power
   }
 
+  // Drive power through the page's own bulk-power control (the app's `state` is
+  // not on window, so reuse the proven globals instead of touching state).
   function qsApplyPower(v) {
-    try {
-      if (!window.state) return;
-      state.standard.forEach(function (s) { s.power = v; });
-      state.exotic.forEach(function (s) { s.power = v; });
-      if (typeof renderSEAGrid === 'function') renderSEAGrid();
-      if (typeof renderPriceSheet === 'function') renderPriceSheet();
-    } catch (e) {}
+    var bp = document.getElementById('bulk-power');
+    if (bp) {
+      bp.value = String(v);
+      if (typeof applyBulkPower === 'function') applyBulkPower();
+    }
   }
   window.qsMaxPower = function () {
     var pw = $('qs-pow'); if (pw) pw.value = 35;
